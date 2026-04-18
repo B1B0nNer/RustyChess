@@ -18,7 +18,7 @@ impl<'a> Widget for HistoryPanel<'a> {
         let info_block = Block::bordered()
             .title(" HISTORY ")
             .border_type(BorderType::Double)
-            .style(Style::default().fg(Color::White).bg(Color::Rgb(211,211,211)));
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(30, 30, 30)));
         
         info_block.render(area, buf);
 

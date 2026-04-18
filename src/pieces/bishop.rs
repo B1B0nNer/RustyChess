@@ -26,6 +26,10 @@ impl Piece for Bishop {
     fn get_code(&self) -> &'static str {
         if self.color == 'w' { "wb" } else { "bb" }
     }
+
+    fn has_moved(&self) -> bool {
+        false
+    }
 }
 
 impl Bishop {

@@ -4,4 +4,5 @@ pub trait Piece: Send + Sync {
     fn get_valid_moves(&self, board: &Vec<Vec<&'static str>>, en_passant_target: Option<(i8, i8)>) -> Vec<(i8, i8)>;
     fn get_color(&self) -> char;
     fn get_code(&self) -> &'static str;
+    fn has_moved(&self) -> bool;
 }

@@ -152,6 +152,42 @@ impl Game {
                 legal_moves.push((new_row, new_col));
             }
         }
+
+        // Add castling moves if the piece is a king
+        if piece.get_code().ends_with('k') && !piece.has_moved() && !self.is_in_check(color) {
+            let row: i8 = if color == 'w' { 7 } else { 0 };
+            
+            // Kingside castling
+            if self.board[row as usize][5].is_empty() && self.board[row as usize][6].is_empty() {
+                if self.pieces.iter().any(|p| {
+                    let (pr, pc) = p.get_pos();
+                    pr == row && pc == 7 && p.get_code().ends_with('r') && p.get_color() == color && !p.has_moved()
+                }) {
+                    // Check if squares are attacked
+                    let opponent_color = if color == 'w' { 'b' } else { 'w' };
+                    if !self.is_square_attacked(row, 5, opponent_color) &&
+                       !self.is_square_attacked(row, 6, opponent_color) {
+                        legal_moves.push((row, 6));
+                    }
+                }
+            }
+            
+            // Queenside castling
+            if self.board[row as usize][1].is_empty() && self.board[row as usize][2].is_empty() && self.board[row as usize][3].is_empty() {
+                if self.pieces.iter().any(|p| {
+                    let (pr, pc) = p.get_pos();
+                    pr == row && pc == 0 && p.get_code().ends_with('r') && p.get_color() == color && !p.has_moved()
+                }) {
+                    // Check if squares are attacked (only 2 and 3 are traversed by king)
+                    let opponent_color = if color == 'w' { 'b' } else { 'w' };
+                    if !self.is_square_attacked(row, 2, opponent_color) &&
+                       !self.is_square_attacked(row, 3, opponent_color) {
+                        legal_moves.push((row, 2));
+                    }
+                }
+            }
+        }
+
         legal_moves
     }
 
@@ -325,6 +361,17 @@ impl Game {
                         (new_col as u8 + b'a') as char, 8 - new_row
                     );
                     self.history.push(move_str);
+
+                    // Handle castling rook move
+                    if current_piece_code.ends_with('k') && (new_col - old_col).abs() == 2 {
+                        let rook_old_col = if new_col == 6 { 7 } else { 0 };
+                        let rook_new_col = if new_col == 6 { 5 } else { 3 };
+                        if let Some(rook_index) = self.pieces.iter().position(|p| {
+                            p.get_pos() == (new_row, rook_old_col) && p.get_code().ends_with('r')
+                        }) {
+                            self.pieces[rook_index].move_piece(new_row, rook_new_col, &mut self.board);
+                        }
+                    }
 
                     self.pieces[piece_index].move_piece(new_row, new_col, &mut self.board);
 

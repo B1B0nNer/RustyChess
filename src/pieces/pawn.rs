@@ -70,6 +70,10 @@ impl Piece for Pawn {
     fn get_code(&self) -> &'static str {
         if self.color == 'w' { "wp" } else { "bp" }
     }
+
+    fn has_moved(&self) -> bool {
+        !self.first_move
+    }
 }
 
 impl Pawn {

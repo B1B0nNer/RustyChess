@@ -18,7 +18,7 @@ impl<'a> Widget for CapturedPanel<'a> {
         let block = Block::bordered()
             .title(" CAPTURED ")
             .border_type(BorderType::Double)
-            .style(Style::default().fg(Color::White).bg(Color::Rgb(211,211,211)));
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(30, 30, 30)));
         
         block.render(area, buf);
 
@@ -81,7 +81,7 @@ impl<'a> CapturedPanel<'a> {
             let fg_color = if p.starts_with('w') {
                 Color::Rgb(242, 242, 209)
             } else {
-                Color::Black
+                Color::Rgb(75, 0, 30) // Dark red for black pieces
             };
 
             let piece_area = Rect::new(current_x, current_y, item_width, item_height);
@@ -91,12 +91,12 @@ impl<'a> CapturedPanel<'a> {
             ]).split(piece_area);
 
             let art_para = Paragraph::new(art)
-                .style(Style::default().fg(fg_color).bg(Color::Rgb(211,211,211)))
+                .style(Style::default().fg(fg_color).bg(Color::Rgb(30, 30, 30)))
                 .alignment(Alignment::Center);
             art_para.render(item_layout[0], buf);
 
             let count_para = Paragraph::new(format!("x{}", counts[p]))
-                .style(Style::default().fg(Color::Black).bg(Color::Rgb(211,211,211)))
+                .style(Style::default().fg(Color::White).bg(Color::Rgb(30, 30, 30)))
                 .alignment(Alignment::Left);
             
             let count_area = Rect::new(item_layout[1].x, item_layout[1].y + 1, item_layout[1].width, 1);

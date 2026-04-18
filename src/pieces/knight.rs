@@ -32,6 +32,10 @@ impl Piece for Knight {
     fn get_code(&self) -> &'static str {
         if self.color == 'w' { "wn" } else { "bn" }
     }
+
+    fn has_moved(&self) -> bool {
+        false
+    }
 }
 
 impl Knight {
