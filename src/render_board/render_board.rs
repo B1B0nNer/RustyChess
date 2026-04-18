@@ -31,11 +31,11 @@ pub fn get_ascii_art(code: &str) -> &'static str {
 }
 
 pub struct Grid<'a> {
-    pub cols: usize,
-    pub rows: usize,
+    pub cols: i8,
+    pub rows: i8,
     pub board: &'a Vec<Vec<&'static str>>,
     pub states: &'a [ButtonState; 64],
-    pub valid_moves: &'a Vec<(usize, usize)>,
+    pub valid_moves: &'a Vec<(i8, i8)>,
 }
 
 impl<'a> Widget for Grid<'a> {
@@ -50,9 +50,9 @@ impl<'a> Widget for Grid<'a> {
         let cells = rows_layout.iter().flat_map(|&row| horizontal.split(row).to_vec());
 
         for (i, cell) in cells.enumerate() {
-            let row = i / self.cols;
-            let col = i % self.cols;
-            let content = self.board[row][col];
+            let row = (i as i8) / self.cols;
+            let col = (i as i8) % self.cols;
+            let content = self.board[row as usize][col as usize];
 
             let is_dark = (row + col) % 2 != 0;
             let bg_color = if is_dark {
@@ -128,7 +128,7 @@ impl<'a> Widget for Grid<'a> {
 pub fn render_board<'a>(
     board: &'a Vec<Vec<&'static str>>, 
     states: &'a [ButtonState; 64],
-    valid_moves: &'a Vec<(usize, usize)>,
+    valid_moves: &'a Vec<(i8, i8)>,
 ) -> Grid<'a> {
     Grid {
         cols: 8,

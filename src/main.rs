@@ -10,8 +10,8 @@ pub struct Game {
     pub board: Vec<Vec<&'static str>>,
     pub turn: char,
     pub pieces: Vec<Box<dyn Piece>>,
-    pub selected_figure_index: Option<usize>,
-    pub valid_moves: Vec<(usize, usize)>,
+    pub selected_figure_index: Option<i8>,
+    pub valid_moves: Vec<(i8, i8)>,
     pub history: Vec<String>,
     pub captured_by_white: Vec<&'static str>,
     pub captured_by_black: Vec<&'static str>,
@@ -28,11 +28,11 @@ impl Game {
 
         // Initialize pawns and update board
         for i in 0..8 {
-            let black_pawn = Pawn::new(1, i, 'b');
+            let black_pawn = Pawn::new(1, i as i8, 'b');
             board[1][i] = "bp";
             pieces.push(Box::new(black_pawn));
 
-            let white_pawn = Pawn::new(6, i, 'w');
+            let white_pawn = Pawn::new(6, i as i8, 'w');
             board[6][i] = "wp";
             pieces.push(Box::new(white_pawn));
         }
@@ -49,7 +49,7 @@ impl Game {
         }
     }
 
-    pub fn select_figure(&mut self, row: usize, col: usize) {
+    pub fn select_figure(&mut self, row: i8, col: i8) {
         // Clear previous hints from the board
         for r in 0..8 {
             for c in 0..8 {
@@ -75,20 +75,21 @@ impl Game {
         }
 
         if let Some(index) = found_index {
-            self.selected_figure_index = Some(index);
+            self.selected_figure_index = Some(index as i8);
             self.valid_moves = self.pieces[index].get_valid_moves(&self.board);
             
             // Show hints on board for empty squares
             for &(mr, mc) in &self.valid_moves {
-                if self.board[mr][mc].is_empty() {
-                    self.board[mr][mc] = "hint";
+                if self.board[mr as usize][mc as usize].is_empty() {
+                    self.board[mr as usize][mc as usize] = "hint";
                 }
             }
         }
     }
 
-    pub fn move_selected_piece(&mut self, new_row: usize, new_col: usize) {
-        if let Some(index) = self.selected_figure_index {
+    pub fn move_selected_piece(&mut self, new_row: i8, new_col: i8) {
+        if let Some(index_i8) = self.selected_figure_index {
+            let index = index_i8 as usize;
             if self.valid_moves.contains(&(new_row, new_col)) {
                 // Clear hints before moving
                 for r in 0..8 {
@@ -101,7 +102,7 @@ impl Game {
 
                 // Handle capture
                 let (old_row, old_col) = self.pieces[index].get_pos();
-                let target_piece = self.board[new_row][new_col];
+                let target_piece = self.board[new_row as usize][new_col as usize];
                 if !target_piece.is_empty() && target_piece != "hint" {
                     // Record captured piece
                     if self.turn == 'w' {
@@ -142,8 +143,8 @@ impl Game {
         }
     }
 
-    pub fn move_piece(&mut self, piece_index: usize, new_row: usize, new_col: usize) {
-        if let Some(piece) = self.pieces.get_mut(piece_index) {
+    pub fn move_piece(&mut self, piece_index: i8, new_row: i8, new_col: i8) {
+        if let Some(piece) = self.pieces.get_mut(piece_index as usize) {
             piece.move_piece(new_row, new_col, &mut self.board);
         }
     }

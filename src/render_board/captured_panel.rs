@@ -58,7 +58,7 @@ impl<'a> CapturedPanel<'a> {
                 "q" => 1,
                 "r" => 2,
                 "b" => 3,
-                "h" => 4, // Knight is 'h' (Horse) in this project
+                "h" => 4,
                 "p" => 5,
                 _ => 6,
             }

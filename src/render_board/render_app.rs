@@ -131,16 +131,16 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                             && row < area.y + area.height;
                         
                         if is_inside {
-                            let r = i / 8;
-                            let c = i % 8;
-                            let content = game.board[r][c];
+                            let r = (i / 8) as i8;
+                            let c = (i % 8) as i8;
+                            let content = game.board[r as usize][c as usize];
 
                             match mouse.kind {
                                 MouseEventKind::Down(MouseButton::Left) => {
                                     button_states[i].pressed = true;
-                                    
+                                            
                                     let is_valid_move = game.valid_moves.contains(&(r, c));
-                                    
+                                            
                                     if is_valid_move {
                                         game.move_selected_piece(r, c);
                                     } else if !content.is_empty() && content != "hint" {
