@@ -21,6 +21,9 @@ pub struct Game {
     pub captured_by_white: Vec<&'static str>,
     pub captured_by_black: Vec<&'static str>,
     pub en_passant_target: Option<(i8, i8)>,
+    pub is_check: bool,
+    pub is_checkmate: bool,
+    pub is_stalemate: bool,
 }
 
 impl Game {
@@ -79,7 +82,126 @@ impl Game {
             captured_by_white: Vec::new(),
             captured_by_black: Vec::new(),
             en_passant_target: None,
+            is_check: false,
+            is_checkmate: false,
+            is_stalemate: false,
         }
+    }
+
+    pub fn is_square_attacked(&self, row: i8, col: i8, attacker_color: char) -> bool {
+        for piece in &self.pieces {
+            if piece.get_color() == attacker_color {
+                let moves = piece.get_valid_moves(&self.board, self.en_passant_target);
+                if moves.contains(&(row, col)) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn is_in_check(&self, color: char) -> bool {
+        let king_pos = self.pieces.iter()
+            .find(|p| p.get_code().ends_with('k') && p.get_color() == color)
+            .map(|p| p.get_pos());
+
+        if let Some((r, c)) = king_pos {
+            let attacker_color = if color == 'w' { 'b' } else { 'w' };
+            return self.is_square_attacked(r, c, attacker_color);
+        }
+        false
+    }
+
+    pub fn get_legal_moves(&self, piece_index: usize) -> Vec<(i8, i8)> {
+        let piece = &self.pieces[piece_index];
+        let color = piece.get_color();
+        let (old_row, old_col) = piece.get_pos();
+        let pseudo_legal_moves = piece.get_valid_moves(&self.board, self.en_passant_target);
+        let mut legal_moves = Vec::new();
+
+        for (new_row, new_col) in pseudo_legal_moves {
+            // Simulate move
+            let mut temp_game_board = self.board.clone();
+            let mut temp_pieces_codes = Vec::new();
+            for p in &self.pieces {
+                temp_pieces_codes.push((p.get_pos(), p.get_code(), p.get_color()));
+            }
+
+            // Perform move on the board clone and piece list clone
+            let moving_piece_code = temp_game_board[old_row as usize][old_col as usize];
+            temp_game_board[old_row as usize][old_col as usize] = "";
+            
+            // Handle capture in simulation
+            let mut is_en_passant_capture = false;
+            if let Some((ep_row, ep_col)) = self.en_passant_target {
+                if new_row == ep_row && new_col == ep_col && moving_piece_code.ends_with('p') {
+                    is_en_passant_capture = true;
+                }
+            }
+
+            temp_game_board[new_row as usize][new_col as usize] = moving_piece_code;
+            if is_en_passant_capture {
+                let captured_pawn_row = if color == 'w' { new_row + 1 } else { new_row - 1 };
+                temp_game_board[captured_pawn_row as usize][new_col as usize] = "";
+            }
+
+            // Check if king is in check in the simulated board
+            if !self.simulated_is_in_check(&temp_game_board, color, (new_row, new_col), moving_piece_code, is_en_passant_capture) {
+                legal_moves.push((new_row, new_col));
+            }
+        }
+        legal_moves
+    }
+
+    fn simulated_is_in_check(
+        &self, 
+        board: &Vec<Vec<&'static str>>, 
+        color: char,
+        new_pos: (i8, i8), 
+        moving_piece_code: &'static str,
+        is_en_passant: bool
+    ) -> bool {
+        // Find king's position on the new board
+        let mut king_pos = None;
+        if moving_piece_code.ends_with('k') {
+            king_pos = Some(new_pos);
+        } else {
+            for p in &self.pieces {
+                if p.get_color() == color && p.get_code().ends_with('k') {
+                    king_pos = Some(p.get_pos());
+                    break;
+                }
+            }
+        }
+
+        let (kr, kc) = king_pos.expect("King should exist");
+        let attacker_color = if color == 'w' { 'b' } else { 'w' };
+
+        // We need to check if ANY piece of attacker_color can reach (kr, kc) on the NEW board.
+        
+        for piece in &self.pieces {
+            if piece.get_color() == attacker_color {
+                let (pr, pc) = piece.get_pos();
+                
+                // If this piece was captured, skip it
+                if pr == new_pos.0 && pc == new_pos.1 {
+                    continue;
+                }
+                if is_en_passant {
+                    let captured_pawn_row = if color == 'w' { new_pos.0 + 1 } else { new_pos.0 - 1 };
+                    if pr == captured_pawn_row && pc == new_pos.1 {
+                        continue;
+                    }
+                }
+
+                // Get valid moves for the attacker piece on the NEW board
+                let moves = piece.get_valid_moves(board, None); // EP doesn't matter for checking king
+                if moves.contains(&(kr, kc)) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn select_figure(&mut self, row: i8, col: i8) {
@@ -109,7 +231,7 @@ impl Game {
 
         if let Some(index) = found_index {
             self.selected_figure_index = Some(index as i8);
-            self.valid_moves = self.pieces[index].get_valid_moves(&self.board, self.en_passant_target);
+            self.valid_moves = self.get_legal_moves(index);
             
             // Show hints on board for empty squares
             for &(mr, mc) in &self.valid_moves {
@@ -212,8 +334,53 @@ impl Game {
                 
                 // Toggle turn
                 self.turn = if self.turn == 'w' { 'b' } else { 'w' };
+
+                // Update game status (check, checkmate, stalemate)
+                self.update_game_status();
             }
         }
+    }
+
+    fn update_game_status(&mut self) {
+        self.is_check = self.is_in_check(self.turn);
+        
+        let mut has_legal_moves = false;
+        for i in 0..self.pieces.len() {
+            if self.pieces[i].get_color() == self.turn {
+                let moves = self.get_legal_moves(i);
+                if !moves.is_empty() {
+                    has_legal_moves = true;
+                    break;
+                }
+            }
+        }
+
+        if !has_legal_moves {
+            if self.is_check {
+                self.is_checkmate = true;
+            } else {
+                self.is_stalemate = true;
+            }
+        } else {
+            self.is_checkmate = false;
+            self.is_stalemate = false;
+        }
+    }
+
+    pub fn reset(&mut self) {
+        let new_game = Self::new();
+        self.board = new_game.board;
+        self.turn = new_game.turn;
+        self.pieces = new_game.pieces;
+        self.selected_figure_index = new_game.selected_figure_index;
+        self.valid_moves = new_game.valid_moves;
+        self.history = new_game.history;
+        self.captured_by_white = new_game.captured_by_white;
+        self.captured_by_black = new_game.captured_by_black;
+        self.en_passant_target = new_game.en_passant_target;
+        self.is_check = new_game.is_check;
+        self.is_checkmate = new_game.is_checkmate;
+        self.is_stalemate = new_game.is_stalemate;
     }
 
     pub fn move_piece(&mut self, piece_index: i8, new_row: i8, new_col: i8) {

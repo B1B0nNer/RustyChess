@@ -8,6 +8,9 @@ use ratatui::{
 pub struct HistoryPanel<'a> {
     pub turn: char,
     pub history: &'a Vec<String>,
+    pub is_check: bool,
+    pub is_checkmate: bool,
+    pub is_stalemate: bool,
 }
 
 impl<'a> Widget for HistoryPanel<'a> {
@@ -26,8 +29,22 @@ impl<'a> Widget for HistoryPanel<'a> {
         .split(area.inner(ratatui::layout::Margin { horizontal: 1, vertical: 1 }));
 
         let turn_text = format!("CURRENT TURN:\n  {}", if self.turn == 'w' { "WHITE" } else { "BLACK" });
-        let turn_info = Paragraph::new(turn_text)
-            .style(Style::default().add_modifier(Modifier::BOLD));
+        let mut turn_style = Style::default().add_modifier(Modifier::BOLD);
+        
+        let mut status_text = String::new();
+        if self.is_checkmate {
+            status_text = format!("\n  !!! CHECKMATE !!!\n  {} LOSES", if self.turn == 'w' { "WHITE" } else { "BLACK" });
+            turn_style = turn_style.fg(Color::Red);
+        } else if self.is_stalemate {
+            status_text = "\n  STALEMATE!".to_string();
+            turn_style = turn_style.fg(Color::Yellow);
+        } else if self.is_check {
+            status_text = "\n  !!! CHECK !!!".to_string();
+            turn_style = turn_style.fg(Color::LightRed);
+        }
+
+        let turn_info = Paragraph::new(format!("{}{}", turn_text, status_text))
+            .style(turn_style);
         
         turn_info.render(info_layout[0], buf);
 

@@ -29,7 +29,9 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut button_states: [ButtonState; 64] = std::array::from_fn(|_| ButtonState::default());
+    let mut replay_button_state = ButtonState::default();
     let mut cell_areas = [Rect::default(); 64];
+    let mut replay_button_area = Rect::default();
 
     loop {
         terminal.draw(|f| {
@@ -43,21 +45,36 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 Constraint::Length(3),            // Title
                 Constraint::Length(board_height), // Board
                 Constraint::Length(3),            // Hint
+                Constraint::Length(3),            // Replay Button Slot
             ])
             .flex(Flex::Center)
             .split(area);
 
+            let mut title_color = Color::Yellow;
+            let mut title_text = "RUSTY CHESS".to_string();
+            
+            if game.is_checkmate {
+                title_color = Color::Red;
+                title_text = format!("CHECKMATE - {} LOSES", if game.turn == 'w' { "WHITE" } else { "BLACK" });
+            } else if game.is_stalemate {
+                title_color = Color::Yellow;
+                title_text = "STALEMATE - DRAW".to_string();
+            } else if game.is_check {
+                title_color = Color::LightRed;
+                title_text = format!("CHECK - {}'S KING", if game.turn == 'w' { "WHITE" } else { "BLACK" });
+            }
+
             let title_block = Block::bordered()
                 .border_type(ratatui::widgets::BorderType::Thick)
-                .style(Style::default().fg(Color::Yellow));
-            let title_text = "RUSTY CHESS";
+                .style(Style::default().fg(title_color));
+            
             let title = Paragraph::new(title_text)
                 .centered()
                 .style(Style::default().add_modifier(Modifier::BOLD))
                 .block(title_block);
 
             // Center the title block horizontally as well
-            let title_layout = Layout::horizontal([Constraint::Length(40)])
+            let title_layout = Layout::horizontal([Constraint::Length(60)])
                 .flex(Flex::Center)
                 .split(layout[0]);
 
@@ -104,6 +121,9 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             let info_panel = HistoryPanel {
                 turn: game.turn,
                 history: &game.history,
+                is_check: game.is_check,
+                is_checkmate: game.is_checkmate,
+                is_stalemate: game.is_stalemate,
             };
             f.render_widget(info_panel, info_area);
 
@@ -112,6 +132,30 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 .split(layout[2]);
 
             f.render_widget(HintPanel, hint_layout[0]);
+
+            // Render Replay Button if game is over
+            if game.is_checkmate || game.is_stalemate {
+                let replay_layout = Layout::horizontal([Constraint::Length(12)])
+                    .flex(Flex::Center)
+                    .split(layout[3]);
+                
+                replay_button_area = replay_layout[0];
+                
+                let mut replay_style = Style::default().fg(Color::Black).bg(Color::White);
+                if replay_button_state.pressed {
+                    replay_style = replay_style.bg(Color::Gray);
+                } else if replay_button_state.focused {
+                    replay_style = replay_style.bg(Color::LightCyan);
+                }
+
+                let replay_button = Paragraph::new(" REPLAY ")
+                    .centered()
+                    .block(Block::bordered().style(replay_style));
+                
+                f.render_widget(replay_button, replay_button_area);
+            } else {
+                replay_button_area = Rect::default();
+            }
         })?;
 
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -123,6 +167,35 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 }
                 Event::Mouse(mouse) => {
                     let (column, row) = (mouse.column, mouse.row);
+
+                    // Check Replay Button
+                    if !replay_button_area.is_empty() {
+                        let is_inside = column >= replay_button_area.x 
+                            && column < replay_button_area.x + replay_button_area.width 
+                            && row >= replay_button_area.y 
+                            && row < replay_button_area.y + replay_button_area.height;
+                        
+                        if is_inside {
+                            match mouse.kind {
+                                MouseEventKind::Down(MouseButton::Left) => {
+                                    replay_button_state.pressed = true;
+                                    game.reset();
+                                }
+                                MouseEventKind::Up(MouseButton::Left) => {
+                                    replay_button_state.focused = true;
+                                    replay_button_state.pressed = false;
+                                }
+                                MouseEventKind::Moved => {
+                                    replay_button_state.focused = true;
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            replay_button_state.focused = false;
+                            replay_button_state.pressed = false;
+                        }
+                    }
+
                     for i in 0..64 {
                         let area = cell_areas[i];
                         let is_inside = column >= area.x 
@@ -134,6 +207,10 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                             let r = (i / 8) as i8;
                             let c = (i % 8) as i8;
                             let content = game.board[r as usize][c as usize];
+
+                            if game.is_checkmate || game.is_stalemate {
+                                continue;
+                            }
 
                             match mouse.kind {
                                 MouseEventKind::Down(MouseButton::Left) => {

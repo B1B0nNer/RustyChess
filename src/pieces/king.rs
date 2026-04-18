@@ -4,7 +4,6 @@ pub struct King {
     pub row: i8,
     pub col: i8,
     pub color: char,
-    pub check: bool,
 }
 
 impl Piece for King {
@@ -34,7 +33,7 @@ impl Piece for King {
 
 impl King {
     pub fn new(row: i8, col: i8, color: char) -> Self {
-        Self { row, col, color, check: false }
+        Self { row, col, color }
     }
 
     pub fn move_king(&mut self, new_row: i8, new_col: i8, board: &mut Vec<Vec<&'static str>>) {
