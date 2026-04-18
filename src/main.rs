@@ -242,8 +242,7 @@ impl Game {
         false
     }
 
-    pub fn select_figure(&mut self, row: i8, col: i8) {
-        // Clear previous hints from the board
+    pub fn clear_hints(&mut self) {
         for r in 0..8 {
             for c in 0..8 {
                 if self.board[r][c] == "hint" {
@@ -251,6 +250,11 @@ impl Game {
                 }
             }
         }
+    }
+
+    pub fn select_figure(&mut self, row: i8, col: i8) {
+        // Clear previous hints from the board
+        self.clear_hints();
         self.valid_moves.clear();
         self.selected_figure_index = None;
 
@@ -285,13 +289,7 @@ impl Game {
             let index = index_i8 as usize;
             if self.valid_moves.contains(&(new_row, new_col)) {
                 // Clear hints before moving
-                for r in 0..8 {
-                    for c in 0..8 {
-                        if self.board[r][c] == "hint" {
-                            self.board[r][c] = "";
-                        }
-                    }
-                }
+                self.clear_hints();
 
                 // Handle capture
                 let (old_row, old_col) = self.pieces[index].get_pos();
