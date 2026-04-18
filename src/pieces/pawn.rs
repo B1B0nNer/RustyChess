@@ -82,10 +82,10 @@ impl Pawn {
     pub fn move_pawn(&mut self, new_row: i8, new_col: i8, board: &mut Vec<Vec<&'static str>>) {
         // Simple logic for demonstration: update board and internal state
         let piece_code = if self.color == 'w' { "wp" } else { "bp" };
-        
+
         // Clear old position
         board[self.row as usize][self.col as usize] = "";
-        
+
         // Update to new position
         self.row = new_row;
         self.col = new_col;

@@ -4,6 +4,11 @@ mod pieces;
 use std::error::Error;
 use render_board::render_app;
 use pieces::pawn::Pawn;
+use pieces::king::King;
+use pieces::queen::Queen;
+use pieces::bishop::Bishop;
+use pieces::knight::Knight;
+use pieces::rook::Rook;
 use pieces::piece::Piece;
 
 pub struct Game {
@@ -23,8 +28,34 @@ impl Game {
         let mut pieces: Vec<Box<dyn Piece>> = Vec::new();
 
         // Initialize board strings (as before)
-        board[0] = vec!["br", "bh", "bb", "bq", "bk", "bb", "bh", "br"];
-        board[7] = vec!["wr", "wh", "wb", "wq", "wk", "wb", "wh", "wr"];
+        board[0] = vec!["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"];
+        board[7] = vec!["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"];
+
+        // Initialize Kings
+        pieces.push(Box::new(King::new(0, 4, 'b')));
+        pieces.push(Box::new(King::new(7, 4, 'w')));
+
+        // Initialize Queens
+        pieces.push(Box::new(Queen::new(0, 3, 'b')));
+        pieces.push(Box::new(Queen::new(7, 3, 'w')));
+
+        // Initialize Bishops
+        pieces.push(Box::new(Bishop::new(0, 2, 'b')));
+        pieces.push(Box::new(Bishop::new(0, 5, 'b')));
+        pieces.push(Box::new(Bishop::new(7, 2, 'w')));
+        pieces.push(Box::new(Bishop::new(7, 5, 'w')));
+
+        // Initialize Knights
+        pieces.push(Box::new(Knight::new(0, 1, 'b')));
+        pieces.push(Box::new(Knight::new(0, 6, 'b')));
+        pieces.push(Box::new(Knight::new(7, 1, 'w')));
+        pieces.push(Box::new(Knight::new(7, 6, 'w')));
+
+        // Initialize Rooks
+        pieces.push(Box::new(Rook::new(0, 0, 'b')));
+        pieces.push(Box::new(Rook::new(0, 7, 'b')));
+        pieces.push(Box::new(Rook::new(7, 0, 'w')));
+        pieces.push(Box::new(Rook::new(7, 7, 'w')));
 
         // Initialize pawns and update board
         for i in 0..8 {
