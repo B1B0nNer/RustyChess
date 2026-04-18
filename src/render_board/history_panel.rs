@@ -1,7 +1,7 @@
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Rect, Margin},
     style::{Color, Modifier, Style},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, BorderType, Paragraph, Widget},
     buffer::Buffer,
 };
 
@@ -17,7 +17,7 @@ impl<'a> Widget for HistoryPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let info_block = Block::bordered()
             .title(" HISTORY ")
-            .border_type(ratatui::widgets::BorderType::Double)
+            .border_type(BorderType::Double)
             .style(Style::default().fg(Color::White).bg(Color::Rgb(211,211,211)));
         
         info_block.render(area, buf);
@@ -26,7 +26,7 @@ impl<'a> Widget for HistoryPanel<'a> {
             Constraint::Length(5), // Turn info
             Constraint::Min(0),    // History
         ])
-        .split(area.inner(ratatui::layout::Margin { horizontal: 1, vertical: 1 }));
+        .split(area.inner(Margin { horizontal: 1, vertical: 1 }));
 
         let turn_text = format!("CURRENT TURN:\n  {}", if self.turn == 'w' { "WHITE" } else { "BLACK" });
         let mut turn_style = Style::default().add_modifier(Modifier::BOLD);

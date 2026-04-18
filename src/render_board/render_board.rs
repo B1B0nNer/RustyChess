@@ -1,6 +1,6 @@
 ﻿use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Rect, Alignment},
     style::{Color, Style},
     widgets::{Block, Widget, Paragraph},
 };
@@ -116,7 +116,7 @@ impl<'a> Widget for Grid<'a> {
                 ]).split(cell);
 
                 let piece_widget = Paragraph::new(piece_str)
-                    .alignment(ratatui::layout::Alignment::Center)
+                    .alignment(Alignment::Center)
                     .style(Style::default().fg(fg_color).bg(current_bg_color));
 
                 piece_widget.render(vertical_layout[1], buf);

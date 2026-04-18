@@ -4,8 +4,6 @@ pub struct Pawn {
     pub col: i8,
     pub color: char, // 'w' for white, 'b' for black
     pub first_move: bool,
-    pub en_passant: bool,
-    pub promotion: bool,
 }
 
 impl Piece for Pawn {
@@ -81,8 +79,6 @@ impl Pawn {
             col,
             color,
             first_move: true,
-            en_passant: false,
-            promotion: false,
         }
     }
 

@@ -1,10 +1,11 @@
 use ratatui::{
     layout::{Constraint, Layout, Rect, Margin},
     style::{Color, Style, Modifier},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, BorderType, Paragraph, Widget},
     buffer::Buffer,
 };
 use std::collections::HashMap;
+use ratatui::layout::Alignment;
 use crate::render_board::render_board::get_ascii_art;
 
 pub struct CapturedPanel<'a> {
@@ -16,7 +17,7 @@ impl<'a> Widget for CapturedPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered()
             .title(" CAPTURED ")
-            .border_type(ratatui::widgets::BorderType::Double)
+            .border_type(BorderType::Double)
             .style(Style::default().fg(Color::White).bg(Color::Rgb(211,211,211)));
         
         block.render(area, buf);
@@ -91,12 +92,12 @@ impl<'a> CapturedPanel<'a> {
 
             let art_para = Paragraph::new(art)
                 .style(Style::default().fg(fg_color).bg(Color::Rgb(211,211,211)))
-                .alignment(ratatui::layout::Alignment::Center);
+                .alignment(Alignment::Center);
             art_para.render(item_layout[0], buf);
 
             let count_para = Paragraph::new(format!("x{}", counts[p]))
                 .style(Style::default().fg(Color::Black).bg(Color::Rgb(211,211,211)))
-                .alignment(ratatui::layout::Alignment::Left);
+                .alignment(Alignment::Left);
             
             let count_area = Rect::new(item_layout[1].x, item_layout[1].y + 1, item_layout[1].width, 1);
             count_para.render(count_area, buf);

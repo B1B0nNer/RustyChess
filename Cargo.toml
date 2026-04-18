@@ -5,7 +5,5 @@ edition = "2024"
 
 [dependencies]
 crossterm = "0.29.0"
-image = "0.25.10"
 ratatui = "0.30.0"
-ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm", "image-defaults"] }
 ratatui-interact = "0.5.3"

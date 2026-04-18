@@ -9,7 +9,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout, Flex, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Paragraph},
+    widgets::{Block, BorderType, Paragraph},
     Terminal,
 };
 use ratatui_interact::components::ButtonState;
@@ -65,7 +65,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             }
 
             let title_block = Block::bordered()
-                .border_type(ratatui::widgets::BorderType::Thick)
+                .border_type(BorderType::Thick)
                 .style(Style::default().fg(title_color));
             
             let title = Paragraph::new(title_text)
