@@ -56,7 +56,7 @@ impl<'a> Widget for Grid<'a> {
 
             let is_dark = (row + col) % 2 != 0;
             let bg_color = if is_dark {
-                Color::Rgb(112, 121, 207)
+                Color::Rgb(255, 206, 254)
             } else {
                 Color::Rgb(153, 173, 255)
             };
@@ -64,9 +64,9 @@ impl<'a> Widget for Grid<'a> {
             let fg_color = if content.starts_with('w') {
                 Color::Rgb(242, 242, 209)
             } else if content.starts_with('b') {
-                Color::Black
+                Color::Rgb(75, 0, 30)
             } else {
-                Color::White
+                Color::Rgb(200, 210, 220)
             };
 
             let is_attack_hint = self.valid_moves.contains(&(row, col)) && !content.is_empty() && content != "hint";

@@ -14,7 +14,7 @@ use ratatui::{
 };
 use ratatui_interact::components::ButtonState;
 
-use crate::render_board::render_board;
+use crate::render_board::render_board::{self, get_ascii_art};
 use crate::render_board::history_panel::HistoryPanel;
 use crate::render_board::hint_panel::HintPanel;
 use crate::render_board::captured_panel::CapturedPanel;
@@ -32,6 +32,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     let mut replay_button_state = ButtonState::default();
     let mut cell_areas = [Rect::default(); 64];
     let mut replay_button_area = Rect::default();
+    let mut promotion_areas = Vec::new();
 
     loop {
         terminal.draw(|f| {
@@ -156,6 +157,75 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             } else {
                 replay_button_area = Rect::default();
             }
+
+            // Render Promotion Overlay
+            if let Some(_) = game.promotion {
+                promotion_areas.clear();
+                let dead_figures = if game.turn == 'w' {
+                    &game.captured_by_black
+                } else {
+                    &game.captured_by_white
+                };
+
+                let overlay_area = Layout::vertical([Constraint::Length(9)])
+                    .flex(Flex::Center)
+                    .split(area);
+                
+                let overlay_box = Layout::horizontal([Constraint::Length(70)])
+                    .flex(Flex::Center)
+                    .split(overlay_area[0])[0];
+
+                f.render_widget(ratatui::widgets::Clear, overlay_box);
+                f.render_widget(Block::bordered().title(" SELECT PROMOTION ").style(Style::default().bg(Color::Blue).fg(Color::White)), overlay_box);
+
+                if dead_figures.is_empty() {
+                    let msg = Paragraph::new("No captured pieces to promote to!\n(Wait, this shouldn't happen in this mode?)").centered();
+                    f.render_widget(msg, overlay_box.inner(ratatui::layout::Margin { horizontal: 1, vertical: 2 }));
+                    
+                } else {
+                    let item_width = 10;
+                    let items_count = dead_figures.len();
+                    
+                    let items_layout = Layout::horizontal(vec![Constraint::Length(item_width); items_count])
+                        .flex(Flex::Center)
+                        .split(overlay_box.inner(ratatui::layout::Margin { horizontal: 1, vertical: 1 }));
+
+                    for (idx, piece_code) in dead_figures.iter().enumerate() {
+                        let item_area = items_layout[idx];
+                        promotion_areas.push((item_area, idx));
+                        
+                        let fg_color = if piece_code.starts_with('w') {
+                            Color::Rgb(242, 242, 209)
+                        } else {
+                            Color::Black
+                        };
+
+                        let piece_str = get_ascii_art(piece_code);
+                        let piece_height = piece_str.lines().count() as u16;
+                        f.render_widget(
+                            Block::bordered().style(Style::default().fg(Color::White)),
+                            item_area
+                        );
+
+                        if !piece_str.is_empty() {
+                            let piece_layout = Layout::vertical([
+                                Constraint::Length(1), // Top border
+                                Constraint::Fill(1),   // Flexible space
+                                Constraint::Length(piece_height), // The art
+                                Constraint::Fill(1),   // Flexible space
+                                Constraint::Length(1), // Bottom border
+                            ]).split(item_area);
+
+                            f.render_widget(
+                                Paragraph::new(piece_str)
+                                    .centered()
+                                    .style(Style::default().fg(fg_color)),
+                                piece_layout[2]
+                            );
+                        }
+                    }
+                }
+            }
         })?;
 
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -167,6 +237,20 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 }
                 Event::Mouse(mouse) => {
                     let (column, row) = (mouse.column, mouse.row);
+
+                    // Handle Promotion Selection
+                    if game.promotion.is_some() {
+                        if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
+                            for (area, idx) in &promotion_areas {
+                                if column >= area.x && column < area.x + area.width
+                                    && row >= area.y && row < area.y + area.height {
+                                    game.promote_pawn(*idx);
+                                    break;
+                                }
+                            }
+                        }
+                        continue;
+                    }
 
                     // Check Replay Button
                     if !replay_button_area.is_empty() {

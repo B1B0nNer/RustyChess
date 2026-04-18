@@ -24,6 +24,7 @@ pub struct Game {
     pub is_check: bool,
     pub is_checkmate: bool,
     pub is_stalemate: bool,
+    pub promotion: Option<usize>, // Store index of the pawn to promote
 }
 
 impl Game {
@@ -85,6 +86,7 @@ impl Game {
             is_check: false,
             is_checkmate: false,
             is_stalemate: false,
+            promotion: None,
         }
     }
 
@@ -308,11 +310,9 @@ impl Game {
                     let (r, c) = p.get_pos();
                     r == old_row && c == old_col
                 }) {
-                    let piece_code = self.pieces[piece_index].get_code();
-                    
-                    // Update en_passant_target for next turn
                     let mut next_en_passant_target = None;
-                    if piece_code.ends_with('p') {
+                    let current_piece_code = self.pieces[piece_index].get_code();
+                    if current_piece_code.ends_with('p') {
                         if (new_row - old_row).abs() == 2 {
                             next_en_passant_target = Some(((old_row + new_row) / 2, old_col));
                         }
@@ -320,24 +320,55 @@ impl Game {
                     self.en_passant_target = next_en_passant_target;
 
                     let move_str = format!("{}: {}{} -> {}{}", 
-                        piece_code,
+                        current_piece_code,
                         (old_col as u8 + b'a') as char, 8 - old_row,
                         (new_col as u8 + b'a') as char, 8 - new_row
                     );
                     self.history.push(move_str);
 
                     self.pieces[piece_index].move_piece(new_row, new_col, &mut self.board);
+
+                    // Toggle turn if not promoting
+                    if (new_row == 0 && current_piece_code == "wp") || (new_row == 7 && current_piece_code == "bp") {
+                        self.promotion = Some(piece_index);
+                    } else {
+                        self.turn = if self.turn == 'w' { 'b' } else { 'w' };
+                        // Update game status (check, checkmate, stalemate)
+                        self.update_game_status();
+                    }
                 }
                 
                 self.selected_figure_index = None;
                 self.valid_moves.clear();
-                
-                // Toggle turn
-                self.turn = if self.turn == 'w' { 'b' } else { 'w' };
-
-                // Update game status (check, checkmate, stalemate)
-                self.update_game_status();
             }
+        }
+    }
+
+    pub fn promote_pawn(&mut self, captured_index: usize) {
+        if let Some(pawn_index) = self.promotion {
+            let (row, col) = self.pieces[pawn_index].get_pos();
+            let color = self.pieces[pawn_index].get_color();
+            
+            let piece_code = if color == 'w' {
+                self.captured_by_black.remove(captured_index)
+            } else {
+                self.captured_by_white.remove(captured_index)
+            };
+
+            let new_piece: Box<dyn Piece> = match &piece_code[1..] {
+                "q" => Box::new(Queen::new(row, col, color)),
+                "r" => Box::new(Rook::new(row, col, color)),
+                "b" => Box::new(Bishop::new(row, col, color)),
+                "n" => Box::new(Knight::new(row, col, color)),
+                _ => Box::new(Queen::new(row, col, color)), // Default to queen if something's wrong
+            };
+
+            self.pieces[pawn_index] = new_piece;
+            self.board[row as usize][col as usize] = piece_code;
+            
+            self.promotion = None;
+            self.turn = if self.turn == 'w' { 'b' } else { 'w' };
+            self.update_game_status();
         }
     }
 
@@ -381,6 +412,7 @@ impl Game {
         self.is_check = new_game.is_check;
         self.is_checkmate = new_game.is_checkmate;
         self.is_stalemate = new_game.is_stalemate;
+        self.promotion = new_game.promotion;
     }
 
     pub fn move_piece(&mut self, piece_index: i8, new_row: i8, new_col: i8) {
