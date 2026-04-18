@@ -9,7 +9,7 @@ use ratatui_interact::components::{Button, ButtonState, ButtonStyle};
 pub fn get_ascii_art(code: &str) -> &'static str {
     match code {
         // White Pieces
-        "wp" => " ▄█▄\n ▀█▀ \n ▄███▄", // Pawn
+        "wp" => " ▄█▄ \n ▀█▀ \n▄███▄", // Pawn
         "wr" => "█▄█▄█\n ███ \n▄███▄", // Rook
         "wh" => "▄███ \n  ██ \n▄████", // Knight
         "wb" => " ▄█▄ \n (█) \n▄███▄", // Bishop
@@ -17,12 +17,14 @@ pub fn get_ascii_art(code: &str) -> &'static str {
         "wk" => "█ █ █\n▀███▀\n▄███▄", // King
  
         // Black Pieces
-        "bp" => " ▄█▄\n ▀█▀ \n ▄███▄", // Pawn
+        "bp" => " ▄█▄ \n ▀█▀ \n▄███▄", // Pawn
         "br" => "█▄█▄█\n ███ \n▄███▄", // Rook
         "bh" => "▄███ \n  ██ \n▄████", // Knight
         "bb" => " ▄█▄ \n (█) \n▄███▄", // Bishop
         "bq" => "█▀█▀█\n ███ \n█████", // Queen
         "bk" => "█ █ █\n▀███▀\n▄███▄", // King
+ 
+        "hint" => " ▄▄▄ \n█   █\n ▀▀▀ ", // Move hint circle
 
         _ => "",
     }
@@ -33,6 +35,7 @@ pub struct Grid<'a> {
     pub rows: usize,
     pub board: &'a Vec<Vec<&'static str>>,
     pub states: &'a [ButtonState; 64],
+    pub valid_moves: &'a Vec<(usize, usize)>,
 }
 
 impl<'a> Widget for Grid<'a> {
@@ -66,10 +69,16 @@ impl<'a> Widget for Grid<'a> {
                 Color::White
             };
 
+            let is_attack_hint = self.valid_moves.contains(&(row, col)) && !content.is_empty() && content != "hint";
+
             let current_bg_color = if self.states[i].pressed {
                 Color::Red
             } else if self.states[i].focused {
                 Color::Green
+            } else if content == "hint" {
+                Color::Rgb(100, 200, 100) // Distinct color for hint cells
+            } else if is_attack_hint {
+                Color::Rgb(220, 50, 50) // Brighter red for attack targets
             } else {
                 bg_color
             };
@@ -81,7 +90,7 @@ impl<'a> Widget for Grid<'a> {
 
             let mut button_style = ButtonStyle::default();
             button_style.unfocused_fg = fg_color;
-            button_style.unfocused_bg = bg_color;
+            button_style.unfocused_bg = current_bg_color;
             button_style.focused_fg = fg_color;
             button_style.focused_bg = Color::Green;
             button_style.pressed_fg = fg_color;
@@ -119,11 +128,13 @@ impl<'a> Widget for Grid<'a> {
 pub fn render_board<'a>(
     board: &'a Vec<Vec<&'static str>>, 
     states: &'a [ButtonState; 64],
+    valid_moves: &'a Vec<(usize, usize)>,
 ) -> Grid<'a> {
     Grid {
         cols: 8,
         rows: 8,
         board,
         states,
+        valid_moves,
     }
 }

@@ -15,8 +15,12 @@ use ratatui::{
 use ratatui_interact::components::ButtonState;
 
 use crate::render_board::render_board;
+use crate::render_board::history_panel::HistoryPanel;
+use crate::render_board::hint_panel::HintPanel;
+use crate::render_board::captured_panel::CapturedPanel;
+use crate::Game;
 
-pub fn run_game(chess_board: &Vec<Vec<&'static str>>) -> Result<(), Box<dyn Error>> {
+pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -46,7 +50,8 @@ pub fn run_game(chess_board: &Vec<Vec<&'static str>>) -> Result<(), Box<dyn Erro
             let title_block = Block::bordered()
                 .border_type(ratatui::widgets::BorderType::Thick)
                 .style(Style::default().fg(Color::Yellow));
-            let title = Paragraph::new("RUSTY CHESS")
+            let title_text = "RUSTY CHESS";
+            let title = Paragraph::new(title_text)
                 .centered()
                 .style(Style::default().add_modifier(Modifier::BOLD))
                 .block(title_block);
@@ -58,11 +63,19 @@ pub fn run_game(chess_board: &Vec<Vec<&'static str>>) -> Result<(), Box<dyn Erro
 
             f.render_widget(title, title_layout[0]);
 
-            let sub_layout = Layout::horizontal([Constraint::Length(board_width)])
-                .flex(Flex::Center)
-                .split(layout[1]);
+            // Main horizontal layout for board and info panel
+            let main_layout = Layout::horizontal([
+                Constraint::Fill(1),              // Left spacer
+                Constraint::Length(25),           // Captured panel (left side)
+                Constraint::Length(board_width),  // Board
+                Constraint::Length(25),           // Info panel (right side)
+                Constraint::Fill(1),              // Right spacer
+            ])
+            .split(layout[1]);
 
-            let board_area = sub_layout[0];
+            let captured_area = main_layout[1];
+            let board_area = main_layout[2];
+            let info_area = main_layout[3];
             
             // Calculate individual cell areas for mouse hit testing
             let col_constraints = (0..8).map(|_| Constraint::Length(12));
@@ -77,21 +90,28 @@ pub fn run_game(chess_board: &Vec<Vec<&'static str>>) -> Result<(), Box<dyn Erro
                 }
             }
 
-            let grid = render_board::render_board(chess_board, &button_states);
+            let grid = render_board::render_board(&game.board, &button_states, &game.valid_moves);
             f.render_widget(grid, board_area);
 
-            let hint_block = Block::bordered()
-                .border_type(ratatui::widgets::BorderType::Plain)
-                .style(Style::default().fg(Color::Gray));
-            let hint = Paragraph::new("Press q to close")
-                .centered()
-                .block(hint_block);
+            // Render Captured Pieces Panel
+            let captured_panel = CapturedPanel {
+                captured_by_white: &game.captured_by_white,
+                captured_by_black: &game.captured_by_black,
+            };
+            f.render_widget(captured_panel, captured_area);
+
+            // Render Info Panel (Turn indicator and History)
+            let info_panel = HistoryPanel {
+                turn: game.turn,
+                history: &game.history,
+            };
+            f.render_widget(info_panel, info_area);
 
             let hint_layout = Layout::horizontal([Constraint::Length(28)])
                 .flex(Flex::Center)
                 .split(layout[2]);
 
-            f.render_widget(hint, hint_layout[0]);
+            f.render_widget(HintPanel, hint_layout[0]);
         })?;
 
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -113,24 +133,27 @@ pub fn run_game(chess_board: &Vec<Vec<&'static str>>) -> Result<(), Box<dyn Erro
                         if is_inside {
                             let r = i / 8;
                             let c = i % 8;
-                            let has_piece = !chess_board[r][c].is_empty();
+                            let content = game.board[r][c];
 
-                            if has_piece {
-                                match mouse.kind {
-                                    MouseEventKind::Down(MouseButton::Left) => {
-                                        button_states[i].pressed = true;
+                            match mouse.kind {
+                                MouseEventKind::Down(MouseButton::Left) => {
+                                    button_states[i].pressed = true;
+                                    
+                                    let is_valid_move = game.valid_moves.contains(&(r, c));
+                                    
+                                    if is_valid_move {
+                                        game.move_selected_piece(r, c);
+                                    } else if !content.is_empty() && content != "hint" {
+                                        game.select_figure(r, c);
                                     }
-                                    MouseEventKind::Up(MouseButton::Left) => {
-                                        button_states[i].focused = true;
-                                    }
-                                    MouseEventKind::Moved => {
-                                        button_states[i].focused = true;
-                                    }
-                                    _ => {}
                                 }
-                            } else {
-                                button_states[i].focused = false;
-                                button_states[i].pressed = false;
+                                MouseEventKind::Up(MouseButton::Left) => {
+                                    button_states[i].focused = true;
+                                }
+                                MouseEventKind::Moved => {
+                                    button_states[i].focused = true;
+                                }
+                                _ => {}
                             }
                         } else {
                             button_states[i].focused = false;
