@@ -20,6 +20,7 @@ pub struct Game {
     pub history: Vec<String>,
     pub captured_by_white: Vec<&'static str>,
     pub captured_by_black: Vec<&'static str>,
+    pub en_passant_target: Option<(i8, i8)>,
 }
 
 impl Game {
@@ -77,6 +78,7 @@ impl Game {
             history: Vec::new(),
             captured_by_white: Vec::new(),
             captured_by_black: Vec::new(),
+            en_passant_target: None,
         }
     }
 
@@ -107,7 +109,7 @@ impl Game {
 
         if let Some(index) = found_index {
             self.selected_figure_index = Some(index as i8);
-            self.valid_moves = self.pieces[index].get_valid_moves(&self.board);
+            self.valid_moves = self.pieces[index].get_valid_moves(&self.board, self.en_passant_target);
             
             // Show hints on board for empty squares
             for &(mr, mc) in &self.valid_moves {
@@ -134,6 +136,17 @@ impl Game {
                 // Handle capture
                 let (old_row, old_col) = self.pieces[index].get_pos();
                 let target_piece = self.board[new_row as usize][new_col as usize];
+                
+                // En passant capture detection
+                let mut is_en_passant_capture = false;
+                if let Some((ep_row, ep_col)) = self.en_passant_target {
+                    if new_row == ep_row && new_col == ep_col {
+                        if self.pieces[index].get_code().ends_with('p') {
+                            is_en_passant_capture = true;
+                        }
+                    }
+                }
+
                 if !target_piece.is_empty() && target_piece != "hint" {
                     // Record captured piece
                     if self.turn == 'w' {
@@ -147,6 +160,25 @@ impl Game {
                         let (r, c) = p.get_pos();
                         r != new_row || c != new_col
                     });
+                } else if is_en_passant_capture {
+                    let captured_pawn_row = if self.turn == 'w' { new_row + 1 } else { new_row - 1 };
+                    let captured_pawn_col = new_col;
+                    let captured_piece_code = self.board[captured_pawn_row as usize][captured_pawn_col as usize];
+
+                    if self.turn == 'w' {
+                        self.captured_by_white.push(captured_piece_code);
+                    } else {
+                        self.captured_by_black.push(captured_piece_code);
+                    }
+
+                    // Remove the captured pawn from pieces list
+                    self.pieces.retain(|p| {
+                        let (r, c) = p.get_pos();
+                        r != captured_pawn_row || c != captured_pawn_col
+                    });
+
+                    // Clear the captured pawn's position on the board
+                    self.board[captured_pawn_row as usize][captured_pawn_col as usize] = "";
                 }
                 
                 // Find the moving piece again because index might have changed after retain
@@ -155,6 +187,16 @@ impl Game {
                     r == old_row && c == old_col
                 }) {
                     let piece_code = self.pieces[piece_index].get_code();
+                    
+                    // Update en_passant_target for next turn
+                    let mut next_en_passant_target = None;
+                    if piece_code.ends_with('p') {
+                        if (new_row - old_row).abs() == 2 {
+                            next_en_passant_target = Some(((old_row + new_row) / 2, old_col));
+                        }
+                    }
+                    self.en_passant_target = next_en_passant_target;
+
                     let move_str = format!("{}: {}{} -> {}{}", 
                         piece_code,
                         (old_col as u8 + b'a') as char, 8 - old_row,

@@ -17,7 +17,7 @@ impl Piece for Pawn {
         self.move_pawn(new_row, new_col, board);
     }
 
-    fn get_valid_moves(&self, board: &Vec<Vec<&'static str>>) -> Vec<(i8, i8)> {
+    fn get_valid_moves(&self, board: &Vec<Vec<&'static str>>, en_passant_target: Option<(i8, i8)>) -> Vec<(i8, i8)> {
         let mut moves = Vec::new();
         let direction: i8 = if self.color == 'w' { -1 } else { 1 };
         let start_row = self.row as i8;
@@ -50,6 +50,13 @@ impl Piece for Pawn {
                     let piece = board[target_row as usize][target_col as usize];
                     if !piece.is_empty() && piece.chars().next().unwrap() != self.color {
                         moves.push((target_row as i8, target_col as i8));
+                    }
+                    
+                    // En passant
+                    if let Some((ep_row, ep_col)) = en_passant_target {
+                        if target_row == ep_row && target_col == ep_col {
+                            moves.push((target_row, target_col));
+                        }
                     }
                 }
             }

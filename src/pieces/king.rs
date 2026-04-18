@@ -14,7 +14,7 @@ impl Piece for King {
         self.move_king(new_row, new_col, board);
     }
 
-    fn get_valid_moves(&self, board: &Vec<Vec<&'static str>>) -> Vec<(i8, i8)> {
+    fn get_valid_moves(&self, board: &Vec<Vec<&'static str>>, _en_passant_target: Option<(i8, i8)>) -> Vec<(i8, i8)> {
         let directions = [
             (-1, 0), (1, 0), (0, -1), (0, 1),
             (-1, -1), (-1, 1), (1, -1), (1, 1)
