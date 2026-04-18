@@ -467,6 +467,9 @@ impl Game {
     }
 }
 
+#[cfg(test)]
+mod tests;
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut game = Game::new();
     render_app::run_game(&mut game)
