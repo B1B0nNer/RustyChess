@@ -11,7 +11,7 @@ impl Widget for HintPanel {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let hint_block = Block::bordered()
             .border_type(BorderType::Plain)
-            .style(Style::default().fg(Color::Gray));
+            .style(Style::default().fg(Color::Rgb(103, 115, 122)));
         
         let hint = Paragraph::new("Press q to close")
             .centered()

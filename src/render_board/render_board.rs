@@ -56,15 +56,15 @@ impl<'a> Widget for Grid<'a> {
 
             let is_dark = (row + col) % 2 != 0;
             let bg_color = if is_dark {
-                Color::Rgb(255, 206, 254)
+                Color::Rgb(183, 65, 14) // Rust Orange
             } else {
-                Color::Rgb(153, 173, 255)
+                Color::Rgb(103, 115, 122) // Rust Silver
             };
 
             let fg_color = if content.starts_with('w') {
-                Color::Rgb(242, 242, 209)
+                Color::Rgb(255, 255, 255) // White
             } else if content.starts_with('b') {
-                Color::Rgb(75, 0, 30)
+                Color::Rgb(30, 38, 80) // Rust Dark Blue
             } else {
                 Color::Rgb(200, 210, 220)
             };

@@ -51,7 +51,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             .flex(Flex::Center)
             .split(area);
 
-            let mut title_color = Color::Yellow;
+            let mut title_color = Color::Rgb(183, 65, 14); // Rust Orange
             let mut title_text = "RUSTY CHESS".to_string();
             
             if game.is_checkmate {
