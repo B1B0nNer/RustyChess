@@ -6,6 +6,11 @@ use crate::pieces::knight::Knight;
 use crate::pieces::rook::Rook;
 use crate::pieces::piece::Piece;
 
+pub enum GameMode {
+    Normal,
+    Fischer,
+}
+
 pub struct Game {
     pub board: Vec<Vec<&'static str>>,
     pub turn: char,
@@ -20,58 +25,15 @@ pub struct Game {
     pub is_checkmate: bool,
     pub is_stalemate: bool,
     pub promotion: Option<usize>, // Store index of the pawn to promote
+    pub game_mode: Option<GameMode>,
 }
 
 impl Game {
     pub fn new() -> Self {
-        let mut board = vec![vec![""; 8]; 8];
-        let mut pieces: Vec<Box<dyn Piece>> = Vec::new();
-
-        // Initialize board strings (as before)
-        board[0] = vec!["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"];
-        board[7] = vec!["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"];
-
-        // Initialize Kings
-        pieces.push(Box::new(King::new(0, 4, 'b')));
-        pieces.push(Box::new(King::new(7, 4, 'w')));
-
-        // Initialize Queens
-        pieces.push(Box::new(Queen::new(0, 3, 'b')));
-        pieces.push(Box::new(Queen::new(7, 3, 'w')));
-
-        // Initialize Bishops
-        pieces.push(Box::new(Bishop::new(0, 2, 'b')));
-        pieces.push(Box::new(Bishop::new(0, 5, 'b')));
-        pieces.push(Box::new(Bishop::new(7, 2, 'w')));
-        pieces.push(Box::new(Bishop::new(7, 5, 'w')));
-
-        // Initialize Knights
-        pieces.push(Box::new(Knight::new(0, 1, 'b')));
-        pieces.push(Box::new(Knight::new(0, 6, 'b')));
-        pieces.push(Box::new(Knight::new(7, 1, 'w')));
-        pieces.push(Box::new(Knight::new(7, 6, 'w')));
-
-        // Initialize Rooks
-        pieces.push(Box::new(Rook::new(0, 0, 'b')));
-        pieces.push(Box::new(Rook::new(0, 7, 'b')));
-        pieces.push(Box::new(Rook::new(7, 0, 'w')));
-        pieces.push(Box::new(Rook::new(7, 7, 'w')));
-
-        // Initialize pawns and update board
-        for i in 0..8 {
-            let black_pawn = Pawn::new(1, i as i8, 'b');
-            board[1][i] = "bp";
-            pieces.push(Box::new(black_pawn));
-
-            let white_pawn = Pawn::new(6, i as i8, 'w');
-            board[6][i] = "wp";
-            pieces.push(Box::new(white_pawn));
-        }
-
         Self {
-            board,
+            board: vec![vec![""; 8]; 8],
             turn: 'w',
-            pieces,
+            pieces: Vec::new(),
             selected_figure_index: None,
             valid_moves: Vec::new(),
             history: Vec::new(),
@@ -82,6 +44,138 @@ impl Game {
             is_checkmate: false,
             is_stalemate: false,
             promotion: None,
+            game_mode: None,
+        }
+    }
+
+    pub fn init_normal(&mut self) {
+        self.game_mode = Some(GameMode::Normal);
+        self.board = vec![vec![""; 8]; 8];
+        self.pieces = Vec::new();
+
+        // Initialize board strings
+        self.board[0] = vec!["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"];
+        self.board[7] = vec!["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"];
+
+        // Initialize Kings
+        self.pieces.push(Box::new(King::new(0, 4, 'b')));
+        self.pieces.push(Box::new(King::new(7, 4, 'w')));
+
+        // Initialize Queens
+        self.pieces.push(Box::new(Queen::new(0, 3, 'b')));
+        self.pieces.push(Box::new(Queen::new(7, 3, 'w')));
+
+        // Initialize Bishops
+        self.pieces.push(Box::new(Bishop::new(0, 2, 'b')));
+        self.pieces.push(Box::new(Bishop::new(0, 5, 'b')));
+        self.pieces.push(Box::new(Bishop::new(7, 2, 'w')));
+        self.pieces.push(Box::new(Bishop::new(7, 5, 'w')));
+
+        // Initialize Knights
+        self.pieces.push(Box::new(Knight::new(0, 1, 'b')));
+        self.pieces.push(Box::new(Knight::new(0, 6, 'b')));
+        self.pieces.push(Box::new(Knight::new(7, 1, 'w')));
+        self.pieces.push(Box::new(Knight::new(7, 6, 'w')));
+
+        // Initialize Rooks
+        self.pieces.push(Box::new(Rook::new(0, 0, 'b')));
+        self.pieces.push(Box::new(Rook::new(0, 7, 'b')));
+        self.pieces.push(Box::new(Rook::new(7, 0, 'w')));
+        self.pieces.push(Box::new(Rook::new(7, 7, 'w')));
+
+        // Initialize pawns and update board
+        for i in 0..8 {
+            let black_pawn = Pawn::new(1, i as i8, 'b');
+            self.board[1][i] = "bp";
+            self.pieces.push(Box::new(black_pawn));
+
+            let white_pawn = Pawn::new(6, i as i8, 'w');
+            self.board[6][i] = "wp";
+            self.pieces.push(Box::new(white_pawn));
+        }
+    }
+
+    pub fn init_fischer(&mut self) {
+        self.game_mode = Some(GameMode::Fischer);
+        self.board = vec![vec![""; 8]; 8];
+        self.pieces = Vec::new();
+
+        use rand::seq::SliceRandom;
+        use rand::prelude::IteratorRandom;
+        let mut rng = rand::thread_rng();
+
+        // 1. Place Bishops on opposite colors
+        let mut positions: Vec<usize> = (0..8).collect();
+        let light_bishop_pos = *[1, 3, 5, 7].choose(&mut rng).unwrap();
+        let dark_bishop_pos = *[0, 2, 4, 6].choose(&mut rng).unwrap();
+        positions.retain(|&x| x != light_bishop_pos && x != dark_bishop_pos);
+
+        // 2. Place Queen
+        let queen_idx = (0..positions.len()).choose(&mut rng).unwrap();
+        let queen_pos = positions.remove(queen_idx);
+
+        // 3. Place Knights
+        let n1_idx = (0..positions.len()).choose(&mut rng).unwrap();
+        let n1_pos = positions.remove(n1_idx);
+        let n2_idx = (0..positions.len()).choose(&mut rng).unwrap();
+        let n2_pos = positions.remove(n2_idx);
+
+        // 4. Place Rooks and King (King must be between Rooks)
+        positions.sort();
+        let r1_pos = positions[0];
+        let king_pos = positions[1];
+        let r2_pos = positions[2];
+
+        let mut row0 = vec![""; 8];
+        row0[light_bishop_pos] = "bb";
+        row0[dark_bishop_pos] = "bb";
+        row0[queen_pos] = "bq";
+        row0[n1_pos] = "bn";
+        row0[n2_pos] = "bn";
+        row0[r1_pos] = "br";
+        row0[king_pos] = "bk";
+        row0[r2_pos] = "br";
+        self.board[0] = row0;
+
+        let mut row7 = vec![""; 8];
+        row7[light_bishop_pos] = "wb";
+        row7[dark_bishop_pos] = "wb";
+        row7[queen_pos] = "wq";
+        row7[n1_pos] = "wn";
+        row7[n2_pos] = "wn";
+        row7[r1_pos] = "wr";
+        row7[king_pos] = "wk";
+        row7[r2_pos] = "wr";
+        self.board[7] = row7;
+
+        // Initialize pieces
+        for (i, &code) in self.board[0].iter().enumerate() {
+            match code {
+                "bk" => self.pieces.push(Box::new(King::new(0, i as i8, 'b'))),
+                "bq" => self.pieces.push(Box::new(Queen::new(0, i as i8, 'b'))),
+                "bb" => self.pieces.push(Box::new(Bishop::new(0, i as i8, 'b'))),
+                "bn" => self.pieces.push(Box::new(Knight::new(0, i as i8, 'b'))),
+                "br" => self.pieces.push(Box::new(Rook::new(0, i as i8, 'b'))),
+                _ => {}
+            }
+        }
+        for (i, &code) in self.board[7].iter().enumerate() {
+            match code {
+                "wk" => self.pieces.push(Box::new(King::new(7, i as i8, 'w'))),
+                "wq" => self.pieces.push(Box::new(Queen::new(7, i as i8, 'w'))),
+                "wb" => self.pieces.push(Box::new(Bishop::new(7, i as i8, 'w'))),
+                "wn" => self.pieces.push(Box::new(Knight::new(7, i as i8, 'w'))),
+                "wr" => self.pieces.push(Box::new(Rook::new(7, i as i8, 'w'))),
+                _ => {}
+            }
+        }
+
+        // Initialize pawns
+        for i in 0..8 {
+            self.board[1][i] = "bp";
+            self.pieces.push(Box::new(Pawn::new(1, i as i8, 'b')));
+            self.board[6][i] = "wp";
+            self.pieces.push(Box::new(Pawn::new(6, i as i8, 'w')));
         }
     }
 
@@ -384,35 +478,8 @@ impl Game {
         }
     }
 
-    pub fn promote_pawn(&mut self, captured_index: usize) {
-        if let Some(pawn_index) = self.promotion {
-            let (row, col) = self.pieces[pawn_index].get_pos();
-            let color = self.pieces[pawn_index].get_color();
 
-            let piece_code = if color == 'w' {
-                self.captured_by_black.remove(captured_index)
-            } else {
-                self.captured_by_white.remove(captured_index)
-            };
-
-            let new_piece: Box<dyn Piece> = match &piece_code[1..] {
-                "q" => Box::new(Queen::new(row, col, color)),
-                "r" => Box::new(Rook::new(row, col, color)),
-                "b" => Box::new(Bishop::new(row, col, color)),
-                "n" => Box::new(Knight::new(row, col, color)),
-                _ => Box::new(Queen::new(row, col, color)), // Default to queen if something's wrong
-            };
-
-            self.pieces[pawn_index] = new_piece;
-            self.board[row as usize][col as usize] = piece_code;
-
-            self.promotion = None;
-            self.turn = if self.turn == 'w' { 'b' } else { 'w' };
-            self.update_game_status();
-        }
-    }
-
-    fn update_game_status(&mut self) {
+    pub fn update_game_status(&mut self) {
         self.is_check = self.is_in_check(self.turn);
 
         let mut has_legal_moves = false;
@@ -453,11 +520,6 @@ impl Game {
         self.is_checkmate = new_game.is_checkmate;
         self.is_stalemate = new_game.is_stalemate;
         self.promotion = new_game.promotion;
-    }
-
-    pub fn move_piece(&mut self, piece_index: usize, new_row: i8, new_col: i8) {
-        if let Some(piece) = self.pieces.get_mut(piece_index) {
-            piece.move_piece(new_row, new_col, &mut self.board);
-        }
+        self.game_mode = new_game.game_mode;
     }
 }

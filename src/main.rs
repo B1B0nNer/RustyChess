@@ -3,10 +3,10 @@ mod render_board;
 mod pieces;
 
 use std::error::Error;
-use game::Game;
+use game::game::Game;
 
 #[cfg(test)]
-mod tests;
+mod test;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut game = Game::new();

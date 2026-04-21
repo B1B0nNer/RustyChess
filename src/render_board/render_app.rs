@@ -14,10 +14,14 @@ use ratatui::{
 };
 use ratatui_interact::components::ButtonState;
 
-use crate::render_board::render_board::{self, get_ascii_art};
-use crate::render_board::history_panel::HistoryPanel;
-use crate::render_board::hint_panel::HintPanel;
-use crate::render_board::captured_panel::CapturedPanel;
+use crate::render_board::render_board;
+use crate::render_board::panels::history_panel::HistoryPanel;
+use crate::render_board::panels::hint_panel::HintPanel;
+use crate::render_board::panels::captured_panel::CapturedPanel;
+use crate::render_board::menu::game_mode::{Menu, get_menu_button_areas};
+use crate::render_board::panels::promotion_panel::{PromotionPanel, get_promotion_areas};
+use crate::render_board::panels::replay_button::{ReplayButton, get_replay_button_area};
+use crate::game::promotion;
 use crate::Game;
 
 pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
@@ -34,9 +38,23 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     let mut replay_button_area = Rect::default();
     let mut promotion_areas = Vec::new();
 
+    let mut menu_button_states = [ButtonState::default(), ButtonState::default()];
+    let mut menu_button_areas = [Rect::default(), Rect::default()];
+
     loop {
         terminal.draw(|f| {
             let area = f.area();
+
+            if game.game_mode.is_none() {
+                let menu = Menu {
+                    states: &menu_button_states,
+                };
+                
+                menu_button_areas = get_menu_button_areas(area);
+
+                f.render_widget(menu, area);
+                return;
+            }
 
             // Calculate the size of the board: 8 cols * 12 widths = 96, 8 rows * 5 heights = 40
             let board_width = 8 * 12;
@@ -136,95 +154,16 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
 
             // Render Replay Button if game is over
             if game.is_checkmate || game.is_stalemate {
-                let replay_layout = Layout::horizontal([Constraint::Length(12)])
-                    .flex(Flex::Center)
-                    .split(layout[3]);
-                
-                replay_button_area = replay_layout[0];
-                
-                let mut replay_style = Style::default().fg(Color::Black).bg(Color::White);
-                if replay_button_state.pressed {
-                    replay_style = replay_style.bg(Color::Gray);
-                } else if replay_button_state.focused {
-                    replay_style = replay_style.bg(Color::LightCyan);
-                }
-
-                let replay_button = Paragraph::new(" REPLAY ")
-                    .centered()
-                    .block(Block::bordered().style(replay_style));
-                
-                f.render_widget(replay_button, replay_button_area);
+                replay_button_area = get_replay_button_area(layout[3]);
+                f.render_widget(ReplayButton { state: &replay_button_state }, layout[3]);
             } else {
                 replay_button_area = Rect::default();
             }
 
             // Render Promotion Overlay
-            if let Some(_) = game.promotion {
-                promotion_areas.clear();
-                let dead_figures = if game.turn == 'w' {
-                    &game.captured_by_black
-                } else {
-                    &game.captured_by_white
-                };
-
-                let overlay_area = Layout::vertical([Constraint::Length(9)])
-                    .flex(Flex::Center)
-                    .split(area);
-                
-                let overlay_box = Layout::horizontal([Constraint::Length(70)])
-                    .flex(Flex::Center)
-                    .split(overlay_area[0])[0];
-
-                f.render_widget(ratatui::widgets::Clear, overlay_box);
-                f.render_widget(Block::bordered().title(" SELECT PROMOTION ").style(Style::default().bg(Color::Blue).fg(Color::White)), overlay_box);
-
-                if dead_figures.is_empty() {
-                    let msg = Paragraph::new("No captured pieces to promote to!\n(Wait, this shouldn't happen in this mode?)").centered();
-                    f.render_widget(msg, overlay_box.inner(ratatui::layout::Margin { horizontal: 1, vertical: 2 }));
-                    
-                } else {
-                    let item_width = 10;
-                    let items_count = dead_figures.len();
-                    
-                    let items_layout = Layout::horizontal(vec![Constraint::Length(item_width); items_count])
-                        .flex(Flex::Center)
-                        .split(overlay_box.inner(ratatui::layout::Margin { horizontal: 1, vertical: 1 }));
-
-                    for (idx, piece_code) in dead_figures.iter().enumerate() {
-                        let item_area = items_layout[idx];
-                        promotion_areas.push((item_area, idx));
-                        
-                        let fg_color = if piece_code.starts_with('w') {
-                            Color::Rgb(242, 242, 209)
-                        } else {
-                            Color::Black
-                        };
-
-                        let piece_str = get_ascii_art(piece_code);
-                        let piece_height = piece_str.lines().count() as u16;
-                        f.render_widget(
-                            Block::bordered().style(Style::default().fg(Color::White)),
-                            item_area
-                        );
-
-                        if !piece_str.is_empty() {
-                            let piece_layout = Layout::vertical([
-                                Constraint::Length(1), // Top border
-                                Constraint::Fill(1),   // Flexible space
-                                Constraint::Length(piece_height), // The art
-                                Constraint::Fill(1),   // Flexible space
-                                Constraint::Length(1), // Bottom border
-                            ]).split(item_area);
-
-                            f.render_widget(
-                                Paragraph::new(piece_str)
-                                    .centered()
-                                    .style(Style::default().fg(fg_color)),
-                                piece_layout[2]
-                            );
-                        }
-                    }
-                }
+            if game.promotion.is_some() {
+                f.render_widget(PromotionPanel { game }, area);
+                promotion_areas = get_promotion_areas(area, game);
             }
         })?;
 
@@ -232,11 +171,54 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             match event::read()? {
                 Event::Key(key) => {
                     if let KeyCode::Char('q') = key.code {
-                        break;
+                        if game.game_mode.is_some() {
+                            game.reset();
+                            // Reset local UI states as well
+                            button_states = std::array::from_fn(|_| ButtonState::default());
+                            menu_button_states = [ButtonState::default(), ButtonState::default()];
+                        } else {
+                            break;
+                        }
                     }
                 }
                 Event::Mouse(mouse) => {
                     let (column, row) = (mouse.column, mouse.row);
+
+                    // Handle Menu Interaction
+                    if game.game_mode.is_none() {
+                        for i in 0..2 {
+                            let area = menu_button_areas[i];
+                            let is_inside = column >= area.x 
+                                && column < area.x + area.width 
+                                && row >= area.y 
+                                && row < area.y + area.height;
+                            
+                            if is_inside {
+                                match mouse.kind {
+                                    MouseEventKind::Down(MouseButton::Left) => {
+                                        menu_button_states[i].pressed = true;
+                                        if i == 0 {
+                                            game.init_normal();
+                                        } else {
+                                            game.init_fischer();
+                                        }
+                                    }
+                                    MouseEventKind::Up(MouseButton::Left) => {
+                                        menu_button_states[i].focused = true;
+                                        menu_button_states[i].pressed = false;
+                                    }
+                                    MouseEventKind::Moved => {
+                                        menu_button_states[i].focused = true;
+                                    }
+                                    _ => {}
+                                }
+                            } else {
+                                menu_button_states[i].focused = false;
+                                menu_button_states[i].pressed = false;
+                            }
+                        }
+                        continue;
+                    }
 
                     // Handle Promotion Selection
                     if game.promotion.is_some() {
@@ -244,7 +226,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                             for (area, idx) in &promotion_areas {
                                 if column >= area.x && column < area.x + area.width
                                     && row >= area.y && row < area.y + area.height {
-                                    game.promote_pawn(*idx);
+                                    promotion::promote_pawn(game, *idx);
                                     break;
                                 }
                             }

@@ -1,8 +1,14 @@
-use super::*;
+use super::super::Game;
+
+pub fn new_with_board() -> Game {
+    let mut game = Game::new();
+    game.init_normal();
+    game
+}
 
 #[test]
 fn test_game_initialization() {
-    let game = Game::new();
+    let game = new_with_board();
     assert_eq!(game.turn, 'w');
     assert_eq!(game.board[0][0], "br");
     assert_eq!(game.board[7][4], "wk");
@@ -11,7 +17,7 @@ fn test_game_initialization() {
 
 #[test]
 fn test_pawn_initial_moves() {
-    let game = Game::new();
+    let game = new_with_board();
     let pawn_index = game.pieces.iter().position(|p| p.get_pos() == (6, 4)).unwrap();
     let moves = game.get_legal_moves(pawn_index);
     assert!(moves.contains(&(5, 4)));
@@ -21,7 +27,7 @@ fn test_pawn_initial_moves() {
 
 #[test]
 fn test_knight_initial_moves() {
-    let game = Game::new();
+    let game = new_with_board();
     let knight_index = game.pieces.iter().position(|p| p.get_pos() == (7, 1)).unwrap();
     let moves = game.get_legal_moves(knight_index);
     assert!(moves.contains(&(5, 0)));
@@ -31,7 +37,7 @@ fn test_knight_initial_moves() {
 
 #[test]
 fn test_simple_move() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
     game.select_figure(6, 4);
     game.move_selected_piece(4, 4);
     assert_eq!(game.board[6][4], "");
@@ -41,7 +47,7 @@ fn test_simple_move() {
 
 #[test]
 fn test_check_detection() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
     game.select_figure(6, 4); game.move_selected_piece(4, 4); // 1. e4
     game.select_figure(1, 4); game.move_selected_piece(3, 4); // 1... e5
     game.select_figure(7, 5); game.move_selected_piece(4, 2); // 2. Bc4
@@ -56,7 +62,7 @@ fn test_check_detection() {
 
 #[test]
 fn test_en_passant_target() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
     game.select_figure(6, 4);
     game.move_selected_piece(4, 4);
     assert_eq!(game.en_passant_target, Some((5, 4)));
@@ -68,7 +74,7 @@ fn test_en_passant_target() {
 
 #[test]
 fn test_en_passant_capture() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
     game.select_figure(6, 4); game.move_selected_piece(4, 4);
     game.select_figure(1, 0); game.move_selected_piece(2, 0);
     game.select_figure(4, 4); game.move_selected_piece(3, 4);
@@ -86,7 +92,7 @@ fn test_en_passant_capture() {
 
 #[test]
 fn test_promotion() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
     game.captured_by_black.push("bq");
 
     game.select_figure(6, 4); game.move_selected_piece(4, 4);
@@ -104,7 +110,7 @@ fn test_promotion() {
     
     assert!(game.promotion.is_some());
     let cap_idx = game.captured_by_black.iter().position(|&p| p == "bq").unwrap();
-    game.promote_pawn(cap_idx);
+    crate::game::promotion::promote_pawn(&mut game, cap_idx);
     
     assert_eq!(game.board[0][0], "bq"); 
     assert_eq!(game.turn, 'b');
@@ -112,7 +118,7 @@ fn test_promotion() {
 
 #[test]
 fn test_castling() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
 
     game.select_figure(6, 4); game.move_selected_piece(4, 4);
     game.select_figure(1, 4); game.move_selected_piece(3, 4);
@@ -135,7 +141,7 @@ fn test_castling() {
 
 #[test]
 fn test_checkmate() {
-    let mut game = Game::new();
+    let mut game = new_with_board();
 
     game.select_figure(6, 5); game.move_selected_piece(5, 5);
     game.select_figure(1, 4); game.move_selected_piece(3, 4);
