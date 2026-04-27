@@ -4,7 +4,6 @@ use ratatui::{
     layout::{Constraint, Layout, Rect,},
     widgets::{Widget},
 };
-use ratatui_core::layout::Direction;
 use ratatui_core::style::Color;
 use ratatui_interact::components::{Button, ButtonState, ButtonStyle};
 use strum::IntoEnumIterator;
@@ -18,7 +17,6 @@ pub struct TimeMenu<'a> {
 }
 
 pub fn get_time_menu_button_areas(area: Rect) -> [Rect; 9] {
-    // These must match the constants used in the render() function exactly
     let btn_height = 10;
     let btn_width = 27;
 
@@ -63,15 +61,12 @@ pub fn get_time_menu_button_areas(area: Rect) -> [Rect; 9] {
 
 impl<'a> Widget for TimeMenu<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // 1. Calculate a more reasonable height for terminal 'squares'
-        // In TUIs, a 3:1 width-to-height ratio (e.g., 15 wide, 5 high)
-        // usually looks more like a natural button.
         let btn_height = 10;
         let btn_width = 27;
 
         let content_layout = Layout::vertical([
-            Constraint::Length(10), // Title
-            Constraint::Length(2),  // Spacer
+            Constraint::Length(10),         // Title
+            Constraint::Length(2),          // Spacer
             Constraint::Length(btn_height), // Row 1
             Constraint::Length(1),          // Spacer
             Constraint::Length(btn_height), // Row 2
@@ -80,7 +75,7 @@ impl<'a> Widget for TimeMenu<'a> {
             Constraint::Length(2),          // Spacer
             Constraint::Length(3),          // Hint
         ])
-            .flex(ratatui::layout::Flex::Center) // Keeps the whole menu centered vertically
+            .flex(ratatui::layout::Flex::Center)
             .split(area);
 
         render_title(&content_layout, buf);
@@ -103,18 +98,19 @@ impl<'a> Widget for TimeMenu<'a> {
 
             let btn_area = row_columns[(i % 3) * 2];
 
-            // --- Dynamic Styling ---
             let (bg, fg) = if state.pressed {
                 (Color::Red, Color::White)
             } else if state.focused {
                 (Color::Green, Color::Black)
             } else {
-                (Color::Rgb(60, 60, 60), Color::Gray) // Darker gray for cleaner look
+                (Color::Rgb(60, 60, 60), Color::Gray)
             };
 
             let mut style = ButtonStyle::default();
             style.unfocused_bg = bg;
             style.focused_bg = bg;
+            style.unfocused_fg = fg;
+            style.focused_fg = fg;
 
             // Render background
             Button::new("", state)
@@ -122,7 +118,6 @@ impl<'a> Widget for TimeMenu<'a> {
                 .render(btn_area, buf);
 
             let mode_text = match mode {
-                // Remove the manual \n and extra spaces
                 TimeMode::Unlimited => " No Time ".to_string(),
                 TimeMode::OneMinute => " 1 Min ".to_string(),
                 _ => mode.to_string(),
@@ -156,7 +151,6 @@ impl<'a> Widget for TimeMenu<'a> {
             }
         }
 
-        // Hint Panel centering
         let hint_area = Layout::horizontal([Constraint::Length(50)])
             .flex(ratatui::layout::Flex::Center)
             .split(content_layout[8])[0];

@@ -76,9 +76,9 @@ impl<'a> Widget for Grid<'a> {
             } else if self.states[i].focused {
                 Color::Green
             } else if content == "hint" {
-                Color::Rgb(100, 200, 100) // Distinct color for hint cells
+                Color::Rgb(100, 200, 100)
             } else if is_attack_hint {
-                Color::Rgb(220, 50, 50) // Brighter red for attack targets
+                Color::Rgb(220, 50, 50)
             } else {
                 bg_color
             };
@@ -101,7 +101,7 @@ impl<'a> Widget for Grid<'a> {
                 .style(button_style)
                 .render(cell, buf);
 
-            // 2. Render the piece art on top
+            // Render the piece art on top
             let piece_str = get_ascii_art(content);
 
             if !piece_str.is_empty() {

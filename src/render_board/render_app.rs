@@ -84,6 +84,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 return;
             }
 
+            //TODO: Change to is_none when Time Menu is completed
             if game.time_mode.is_some() {
                 let time_mode = TimeMenu {
                     states: &time_menu_button_states,
