@@ -10,7 +10,9 @@ dependencies = [
  "crossterm 0.29.0",
  "rand",
  "ratatui 0.30.0",
+ "ratatui-core",
  "ratatui-interact",
+ "strum 0.26.3",
 ]
 
 [[package]]

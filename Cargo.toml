@@ -9,3 +9,5 @@ ratatui = "0.30.0"
 ratatui-interact = "0.5.3"
 rand = "0.8.5"
 artbox = { version = "0.2.0", features = ["ratatui"] }
+strum = "0.26.3"
+ratatui-core = "0.1.0"

@@ -1,3 +1,4 @@
+use strum::{Display, EnumIter};
 use crate::pieces::pawn::Pawn;
 use crate::pieces::king::King;
 use crate::pieces::queen::Queen;
@@ -9,6 +10,28 @@ use crate::pieces::piece::Piece;
 pub enum GameMode {
     Normal,
     Fischer,
+}
+
+#[derive(Debug, Display, EnumIter, PartialEq)]
+pub enum TimeMode {
+    #[strum(serialize = "No Time")]
+    Unlimited,
+    #[strum(serialize = "1 Min")]
+    OneMinute,
+    #[strum(serialize = "3 Min")]
+    ThreeMinutes,
+    #[strum(serialize = "5 Min")]
+    FiveMinutes,
+    #[strum(serialize = "10 Min")]
+    TenMinutes,
+    #[strum(serialize = "15 Min")]
+    FifteenMinutes,
+    #[strum(serialize = "30 Min")]
+    ThirtyMinutes,
+    #[strum(serialize = "45 Min")]
+    FortyFiveMinutes,
+    #[strum(serialize = "1 Hour")]
+    OneHour,
 }
 
 pub struct Game {
@@ -26,6 +49,7 @@ pub struct Game {
     pub is_stalemate: bool,
     pub promotion: Option<usize>, // Store index of the pawn to promote
     pub game_mode: Option<GameMode>,
+    pub time_mode: Option<TimeMode>,
 }
 
 impl Game {
@@ -45,6 +69,7 @@ impl Game {
             is_stalemate: false,
             promotion: None,
             game_mode: None,
+            time_mode: None,
         }
     }
 
@@ -521,5 +546,6 @@ impl Game {
         self.is_stalemate = new_game.is_stalemate;
         self.promotion = new_game.promotion;
         self.game_mode = new_game.game_mode;
+        self.time_mode = new_game.time_mode;
     }
 }

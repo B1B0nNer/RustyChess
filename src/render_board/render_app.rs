@@ -18,11 +18,35 @@ use crate::render_board::render_board;
 use crate::render_board::panels::history_panel::HistoryPanel;
 use crate::render_board::panels::hint_panel::HintPanel;
 use crate::render_board::panels::captured_panel::CapturedPanel;
-use crate::render_board::menu::game_mode::{Menu, get_menu_button_areas};
+use crate::render_board::menu::game_mode::{GameMenu, get_game_menu_button_areas};
 use crate::render_board::panels::promotion_panel::{PromotionPanel, get_promotion_areas};
 use crate::render_board::panels::replay_button::{ReplayButton, get_replay_button_area};
 use crate::game::promotion;
 use crate::Game;
+use crate::render_board::menu::time_mode::{get_time_menu_button_areas, TimeMenu};
+
+// 1. Helper to reduce boilerplate
+fn is_inside(col: u16, row: u16, area: &Rect) -> bool {
+    col >= area.x && col < area.x + area.width && row >= area.y && row < area.y + area.height
+}
+
+// 2. Helper to update button states consistently
+fn update_button(state: &mut ButtonState, is_inside: bool, mouse_kind: MouseEventKind) {
+    if is_inside {
+        match mouse_kind {
+            MouseEventKind::Down(MouseButton::Left) => state.pressed = true,
+            MouseEventKind::Up(MouseButton::Left) => {
+                state.focused = true;
+                state.pressed = false;
+            }
+            MouseEventKind::Moved => state.focused = true,
+            _ => {}
+        }
+    } else {
+        state.focused = false;
+        state.pressed = false;
+    }
+}
 
 pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -38,21 +62,36 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     let mut replay_button_area = Rect::default();
     let mut promotion_areas = Vec::new();
 
-    let mut menu_button_states = [ButtonState::default(), ButtonState::default()];
-    let mut menu_button_areas = [Rect::default(), Rect::default()];
+    let mut game_menu_button_states = [ButtonState::default(), ButtonState::default()];
+    let mut game_menu_button_areas = [Rect::default(), Rect::default()];
+
+    let mut time_menu_button_states: [ButtonState; 9] =
+        std::array::from_fn(|_| ButtonState::default());
+    let mut time_menu_button_areas = [Rect::default(); 9];
 
     loop {
         terminal.draw(|f| {
             let area = f.area();
 
             if game.game_mode.is_none() {
-                let menu = Menu {
-                    states: &menu_button_states,
+                let menu = GameMenu {
+                    states: &game_menu_button_states,
                 };
-                
-                menu_button_areas = get_menu_button_areas(area);
+
+                game_menu_button_areas = get_game_menu_button_areas(area);
 
                 f.render_widget(menu, area);
+                return;
+            }
+
+            if game.time_mode.is_some() {
+                let time_mode = TimeMenu {
+                    states: &time_menu_button_states,
+                };
+
+                time_menu_button_areas = get_time_menu_button_areas(area);
+
+                f.render_widget(time_mode, area);
                 return;
             }
 
@@ -71,7 +110,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
 
             let mut title_color = Color::Rgb(183, 65, 14); // Rust Orange
             let mut title_text = "RUSTY CHESS".to_string();
-            
+
             if game.is_checkmate {
                 title_color = Color::Red;
                 title_text = format!("CHECKMATE - {} LOSES", if game.turn == 'w' { "WHITE" } else { "BLACK" });
@@ -86,7 +125,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             let title_block = Block::bordered()
                 .border_type(BorderType::Thick)
                 .style(Style::default().fg(title_color));
-            
+
             let title = Paragraph::new(title_text)
                 .centered()
                 .style(Style::default().add_modifier(Modifier::BOLD))
@@ -112,7 +151,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             let captured_area = main_layout[1];
             let board_area = main_layout[2];
             let info_area = main_layout[3];
-            
+
             // Calculate individual cell areas for mouse hit testing
             let col_constraints = (0..8).map(|_| Constraint::Length(12));
             let row_constraints = (0..8).map(|_| Constraint::Length(5));
@@ -175,7 +214,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                             game.reset();
                             // Reset local UI states as well
                             button_states = std::array::from_fn(|_| ButtonState::default());
-                            menu_button_states = [ButtonState::default(), ButtonState::default()];
+                            game_menu_button_states = [ButtonState::default(), ButtonState::default()];
                         } else {
                             break;
                         }
@@ -184,19 +223,19 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 Event::Mouse(mouse) => {
                     let (column, row) = (mouse.column, mouse.row);
 
-                    // Handle Menu Interaction
+                    // Handle Game Menu Interaction
                     if game.game_mode.is_none() {
                         for i in 0..2 {
-                            let area = menu_button_areas[i];
-                            let is_inside = column >= area.x 
-                                && column < area.x + area.width 
-                                && row >= area.y 
+                            let area = game_menu_button_areas[i];
+                            let is_inside = column >= area.x
+                                && column < area.x + area.width
+                                && row >= area.y
                                 && row < area.y + area.height;
-                            
+
                             if is_inside {
                                 match mouse.kind {
                                     MouseEventKind::Down(MouseButton::Left) => {
-                                        menu_button_states[i].pressed = true;
+                                        game_menu_button_states[i].pressed = true;
                                         if i == 0 {
                                             game.init_normal();
                                         } else {
@@ -204,17 +243,49 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                                         }
                                     }
                                     MouseEventKind::Up(MouseButton::Left) => {
-                                        menu_button_states[i].focused = true;
-                                        menu_button_states[i].pressed = false;
+                                        game_menu_button_states[i].focused = true;
+                                        game_menu_button_states[i].pressed = false;
                                     }
                                     MouseEventKind::Moved => {
-                                        menu_button_states[i].focused = true;
+                                        game_menu_button_states[i].focused = true;
                                     }
                                     _ => {}
                                 }
                             } else {
-                                menu_button_states[i].focused = false;
-                                menu_button_states[i].pressed = false;
+                                game_menu_button_states[i].focused = false;
+                                game_menu_button_states[i].pressed = false;
+                            }
+                        }
+                        continue;
+                    }
+
+                    // Handle Time Menu Interaction
+                    if game.time_mode.is_none() {
+                        for i in 0..9 {
+                            let area = time_menu_button_areas[i];
+                            let is_inside = column >= area.x
+                                && column < area.x + area.width
+                                && row >= area.y
+                                && row < area.y + area.height;
+
+                            if is_inside {
+                                match mouse.kind {
+                                    MouseEventKind::Down(MouseButton::Left) => {
+                                        time_menu_button_states[i].pressed = true;
+                                        //TODO: Implement time mode selection
+                                    }
+                                    MouseEventKind::Up(MouseButton::Left) => {
+                                        time_menu_button_states[i].focused = true;
+                                        time_menu_button_states[i].pressed = false;
+                                    }
+                                    MouseEventKind::Moved => {
+                                        time_menu_button_states[i].focused = true;
+                                    }
+                                    _ => {}
+                                }
+                            } else {
+                                time_menu_button_states[i].focused = false;
+                                time_menu_button_states[i].pressed = false;
                             }
                         }
                         continue;
@@ -236,11 +307,11 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
 
                     // Check Replay Button
                     if !replay_button_area.is_empty() {
-                        let is_inside = column >= replay_button_area.x 
-                            && column < replay_button_area.x + replay_button_area.width 
-                            && row >= replay_button_area.y 
+                        let is_inside = column >= replay_button_area.x
+                            && column < replay_button_area.x + replay_button_area.width
+                            && row >= replay_button_area.y
                             && row < replay_button_area.y + replay_button_area.height;
-                        
+
                         if is_inside {
                             match mouse.kind {
                                 MouseEventKind::Down(MouseButton::Left) => {
@@ -264,11 +335,11 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
 
                     for i in 0..64 {
                         let area = cell_areas[i];
-                        let is_inside = column >= area.x 
-                            && column < area.x + area.width 
-                            && row >= area.y 
+                        let is_inside = column >= area.x
+                            && column < area.x + area.width
+                            && row >= area.y
                             && row < area.y + area.height;
-                        
+
                         if is_inside {
                             let r = (i / 8) as i8;
                             let c = (i % 8) as i8;
@@ -281,9 +352,9 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                             match mouse.kind {
                                 MouseEventKind::Down(MouseButton::Left) => {
                                     button_states[i].pressed = true;
-                                            
+
                                     let is_valid_move = game.valid_moves.contains(&(r, c));
-                                            
+
                                     if is_valid_move {
                                         game.move_selected_piece(r, c);
                                     } else if !content.is_empty() && content != "hint" {

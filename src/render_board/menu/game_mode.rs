@@ -8,13 +8,14 @@ use ratatui_interact::components::{Button, ButtonState, ButtonStyle};
 use crate::render_board::render_board::get_ascii_art;
 use crate::render_board::panels::hint_panel::HintPanel;
 use artbox::{Renderer, Alignment as ArtAlignment};
+use crate::render_board::menu::text_render::text_render;
 use super::title::render_title;
 
-pub struct Menu<'a> {
+pub struct GameMenu<'a> {
     pub states: &'a [ButtonState; 2],
 }
 
-pub fn get_menu_button_areas(area: Rect) -> [Rect; 2] {
+pub fn get_game_menu_button_areas(area: Rect) -> [Rect; 2] {
     let total_height = 10 + 3 + 17 + 2 + 3; // Title(10) + Sp(3) + Modes(17) + Sp(2) + Hint(3)
     let main_layout = Layout::vertical([
         Constraint::Length(total_height),
@@ -70,7 +71,7 @@ pub fn get_menu_button_areas(area: Rect) -> [Rect; 2] {
     [normal_btn_area, fischer_btn_area]
 }
 
-impl<'a> Menu<'a> {
+impl<'a> GameMenu<'a> {
     fn render_preview(&self, area: Rect, buf: &mut Buffer, row: &[&'static str], is_white: bool) {
         let piece_width = 7; // Use 7 specifically to fit 56 in 60
         let total_preview_width = piece_width * 8;
@@ -124,7 +125,7 @@ impl<'a> Menu<'a> {
     }
 }
 
-impl<'a> Widget for Menu<'a> {
+impl<'a> Widget for GameMenu<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let total_height = 10 + 3 + 17 + 2 + 3; // Title(11) + Sp(3) + Modes(17) + Sp(2) + Hint(3)
         let main_layout = Layout::vertical([
@@ -200,15 +201,8 @@ impl<'a> Widget for Menu<'a> {
             .render_grid("Normal", btn_normal_area.width, btn_normal_area.height)
             .unwrap();
 
-        for (y, row) in normal_grid.chars.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                let cell_buf = &mut buf[(btn_normal_area.x + x as u16, btn_normal_area.y + y as u16)];
-                cell_buf.set_bg(normal_bg);
-                if cell.ch != ' ' {
-                    cell_buf.set_char(cell.ch).set_fg(Color::White);
-                }
-            }
-        }
+        text_render(normal_grid, btn_normal_area, normal_bg, buf);
+
 
         // Fischer Mode Preview
         let fischer_area = modes_layout[2];
@@ -259,15 +253,7 @@ impl<'a> Widget for Menu<'a> {
             .render_grid("Fischer", btn_fischer_area.width, btn_fischer_area.height)
             .unwrap();
 
-        for (y, row) in fischer_grid.chars.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                let cell_buf = &mut buf[(btn_fischer_area.x + x as u16, btn_fischer_area.y + y as u16)];
-                cell_buf.set_bg(fischer_bg);
-                if cell.ch != ' ' {
-                    cell_buf.set_char(cell.ch).set_fg(Color::White);
-                }
-            }
-        }
+        text_render(fischer_grid, btn_fischer_area, fischer_bg, buf);
 
         // Hint Panel
         let hint_area = Layout::horizontal([Constraint::Length(40)])
