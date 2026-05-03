@@ -5,7 +5,7 @@ use ratatui::{
     buffer::Buffer,
 };
 
-pub struct HistoryPanel<'a> {
+pub struct InfoPanel<'a> {
     pub turn: char,
     pub history: &'a Vec<String>,
     pub white_time: u32,
@@ -13,7 +13,7 @@ pub struct HistoryPanel<'a> {
     pub is_unlimited: bool,
 }
 
-impl<'a> Widget for HistoryPanel<'a> {
+impl<'a> Widget for InfoPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let format_time = |secs: u32| -> String {
             if self.is_unlimited { "∞".to_string() }

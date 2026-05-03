@@ -15,7 +15,7 @@ use ratatui::{
 use ratatui_interact::components::ButtonState;
 use strum::IntoEnumIterator;
 use crate::render_board::render_board;
-use crate::render_board::panels::history_panel::HistoryPanel;
+use crate::render_board::panels::info_panel::InfoPanel;
 use crate::render_board::panels::hint_panel::HintPanel;
 use crate::render_board::panels::captured_panel::CapturedPanel;
 use crate::render_board::menu::game_mode::{GameMenu, get_game_menu_button_areas};
@@ -161,7 +161,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             };
             f.render_widget(captured_panel, captured_area);
 
-            let info_panel = HistoryPanel {
+            let info_panel = InfoPanel {
                 turn: game.turn,
                 history: &game.history,
                 white_time: game.white_time,
