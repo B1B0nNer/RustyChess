@@ -13,7 +13,7 @@ use ratatui::{
     Terminal,
 };
 use ratatui_interact::components::ButtonState;
-
+use strum::IntoEnumIterator;
 use crate::render_board::render_board;
 use crate::render_board::panels::history_panel::HistoryPanel;
 use crate::render_board::panels::hint_panel::HintPanel;
@@ -23,30 +23,8 @@ use crate::render_board::panels::promotion_panel::{PromotionPanel, get_promotion
 use crate::render_board::panels::replay_button::{ReplayButton, get_replay_button_area};
 use crate::game::promotion;
 use crate::Game;
+use crate::game::game::TimeMode;
 use crate::render_board::menu::time_mode::{get_time_menu_button_areas, TimeMenu};
-
-// 1. Helper to reduce boilerplate
-fn is_inside(col: u16, row: u16, area: &Rect) -> bool {
-    col >= area.x && col < area.x + area.width && row >= area.y && row < area.y + area.height
-}
-
-// 2. Helper to update button states consistently
-fn update_button(state: &mut ButtonState, is_inside: bool, mouse_kind: MouseEventKind) {
-    if is_inside {
-        match mouse_kind {
-            MouseEventKind::Down(MouseButton::Left) => state.pressed = true,
-            MouseEventKind::Up(MouseButton::Left) => {
-                state.focused = true;
-                state.pressed = false;
-            }
-            MouseEventKind::Moved => state.focused = true,
-            _ => {}
-        }
-    } else {
-        state.focused = false;
-        state.pressed = false;
-    }
-}
 
 pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -70,6 +48,8 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
     let mut time_menu_button_areas = [Rect::default(); 9];
 
     loop {
+        game.tick();
+
         terminal.draw(|f| {
             let area = f.area();
 
@@ -84,8 +64,7 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                 return;
             }
 
-            //TODO: Change to is_none when Time Menu is completed
-            if game.time_mode.is_some() {
+            if game.time_mode.is_none() {
                 let time_mode = TimeMenu {
                     states: &time_menu_button_states,
                 };
@@ -112,7 +91,13 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             let mut title_color = Color::Rgb(183, 65, 14); // Rust Orange
             let mut title_text = "RUSTY CHESS".to_string();
 
-            if game.is_checkmate {
+            let white_out = game.white_time == 0 && !matches!(game.time_mode, Some(TimeMode::Unlimited));
+            let black_out = game.black_time == 0 && !matches!(game.time_mode, Some(TimeMode::Unlimited));
+
+            if white_out || black_out {
+                title_color = Color::Red;
+                title_text = format!("TIME OUT - {} LOSES", if white_out { "WHITE" } else { "BLACK" });
+            } else if game.is_checkmate {
                 title_color = Color::Red;
                 title_text = format!("CHECKMATE - {} LOSES", if game.turn == 'w' { "WHITE" } else { "BLACK" });
             } else if game.is_stalemate {
@@ -176,13 +161,12 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
             };
             f.render_widget(captured_panel, captured_area);
 
-            // Render Info Panel (Turn indicator and History)
             let info_panel = HistoryPanel {
                 turn: game.turn,
                 history: &game.history,
-                is_check: game.is_check,
-                is_checkmate: game.is_checkmate,
-                is_stalemate: game.is_stalemate,
+                white_time: game.white_time,
+                black_time: game.black_time,
+                is_unlimited: matches!(game.time_mode, Some(TimeMode::Unlimited)),
             };
             f.render_widget(info_panel, info_area);
 
@@ -273,7 +257,8 @@ pub fn run_game(game: &mut Game) -> Result<(), Box<dyn Error>> {
                                 match mouse.kind {
                                     MouseEventKind::Down(MouseButton::Left) => {
                                         time_menu_button_states[i].pressed = true;
-                                        //TODO: Implement time mode selection
+                                        game.time_mode = TimeMode::iter().nth(i);
+                                        game.start_timers();
                                     }
                                     MouseEventKind::Up(MouseButton::Left) => {
                                         time_menu_button_states[i].focused = true;

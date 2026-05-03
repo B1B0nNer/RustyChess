@@ -126,12 +126,14 @@ impl<'a> Widget for TimeMenu<'a> {
             if mode == TimeMode::Unlimited {
                 // Split the button area into top and bottom halves
                 let split_btn = Layout::vertical([
-                    Constraint::Percentage(45),
-                    Constraint::Percentage(5),
-                    Constraint::Percentage(50),
+                    Constraint::Percentage(7),
+                    Constraint::Percentage(43),
+                    Constraint::Percentage(0),
+                    Constraint::Percentage(43),
+                    Constraint::Percentage(7),
                 ]).split(btn_area);
 
-                let lines = ["No", "", "Time"];
+                let lines = ["", "    No    " , "", " Time ", ""];
                 for (i, line) in lines.iter().enumerate() {
                     if let Ok(grid) = Renderer::default()
                         .with_alignment(artbox::Alignment::Center)

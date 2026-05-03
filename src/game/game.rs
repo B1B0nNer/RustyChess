@@ -1,4 +1,5 @@
 use strum::{Display, EnumIter};
+use std::time::Instant;
 use crate::pieces::pawn::Pawn;
 use crate::pieces::king::King;
 use crate::pieces::queen::Queen;
@@ -50,6 +51,9 @@ pub struct Game {
     pub promotion: Option<usize>, // Store index of the pawn to promote
     pub game_mode: Option<GameMode>,
     pub time_mode: Option<TimeMode>,
+    pub white_time: u32,
+    pub black_time: u32,
+    pub last_tick: Instant,
 }
 
 impl Game {
@@ -70,8 +74,51 @@ impl Game {
             promotion: None,
             game_mode: None,
             time_mode: None,
+            white_time: 60,
+            black_time: 60,
+            last_tick: Instant::now(),
         }
     }
+
+    pub fn start_timers(&mut self) {
+        let secs = match self.time_mode.as_ref().unwrap_or(&TimeMode::Unlimited) {
+            TimeMode::Unlimited => 0,
+            TimeMode::OneMinute => 60,
+            TimeMode::ThreeMinutes => 180,
+            TimeMode::FiveMinutes => 300,
+            TimeMode::TenMinutes => 600,
+            TimeMode::FifteenMinutes => 900,
+            TimeMode::ThirtyMinutes => 1800,
+            TimeMode::FortyFiveMinutes => 2700,
+            TimeMode::OneHour => 3600,
+        };
+        self.white_time = secs;
+        self.black_time = secs;
+        self.last_tick = Instant::now();
+    }
+    pub fn tick(&mut self) {
+        if let Some(TimeMode::Unlimited) = self.time_mode { return; }
+        if self.is_checkmate || self.is_stalemate { return; }
+
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_tick).as_secs() as u32;
+
+        if elapsed >= 1 {
+            if self.turn == 'w' {
+                self.white_time = self.white_time.saturating_sub(elapsed);
+                if self.white_time == 0 {
+                    self.is_checkmate = true;
+                }
+            } else {
+                self.black_time = self.black_time.saturating_sub(elapsed);
+                if self.black_time == 0 {
+                    self.is_checkmate = true;
+                }
+            }
+            self.last_tick = now;
+        }
+    }
+
 
     pub fn init_normal(&mut self) {
         self.game_mode = Some(GameMode::Normal);
@@ -547,5 +594,9 @@ impl Game {
         self.promotion = new_game.promotion;
         self.game_mode = new_game.game_mode;
         self.time_mode = new_game.time_mode;
+        self.time_mode = None;
+        self.white_time = 60;
+        self.black_time = 60;
+        self.last_tick = Instant::now();
     }
 }
