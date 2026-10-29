@@ -100,7 +100,7 @@ The project follows a modular design, separating the game logic from the termina
 
 ## Releases
 
-The latest binary for various platforms can be found in the [Releases](https://github.com/your-username/RustyChess/releases) section. Alternatively, you can build a release binary locally:
+The latest binary for various platforms can be found in the [Releases](https://github.com/B1B0nNer/RustyChess/releases) section. Alternatively, you can build a release binary locally:
 
 ```bash
 cargo build --release
