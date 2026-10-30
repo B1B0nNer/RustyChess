@@ -82,7 +82,7 @@ The project follows a modular design, separating the game logic from the termina
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/RustyChess.git
+   git clone https://github.com/B1B0nNer/RustyChess.git
    cd RustyChess
    ```
 
